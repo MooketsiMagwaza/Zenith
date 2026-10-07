@@ -35,3 +35,13 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# Rust / Tauri
+target/
+**/src-tauri/gen/
+
+# Local platform data
+ops/data/
+*.pyc
+__pycache__/
+.venv/
