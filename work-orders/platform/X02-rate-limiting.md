@@ -1,6 +1,6 @@
 # X02 — Rate limiting
 
-State: Not started
+State: Re-scoped on 7 October 2026. With no hosted API, rate limiting applies to the sync engine: pairing attempts, concurrent connections, and frame sizes (see [S04](../sync/S04-discovery-and-pairing.md) and [S05](../sync/S05-transport-and-protocol.md)). The API design below returns in full only if a relay is built (S09). If you still want a hosted API as a showpiece, say so.
 
 ## Goal
 

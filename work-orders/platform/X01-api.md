@@ -1,6 +1,6 @@
 # X01 — A sync API with accounts
 
-State: Not started
+State: Superseded on 7 October 2026 by the embedded device-to-device sync engine (see [`docs/SYNC.md`](../../docs/SYNC.md) and [S01 to S09](../sync)). The owner wants cross-device sync that works like Syncthing and LocalSend, on the local network, with no accounts or hosted server. The design below is kept in case a hosted relay (S09) is ever wanted; nothing here is planned.
 
 ## Why
 

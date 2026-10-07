@@ -6,14 +6,15 @@ This repository is a monorepo:
 
 | Path | What it is | State |
 | --- | --- | --- |
-| [`apps/web`](apps/web) | The basic app: a client-only React single-page app that keeps everything in the browser. Its [README](apps/web/README.md) is the full product specification. | Working |
+| [`apps/web`](apps/web) | The full app: a client-only React single-page app that keeps everything in the browser. Its [README](apps/web/README.md) is the full product specification. It is becoming `apps/app`, a React app that runs in a browser and as a Tauri desktop app ([W04](work-orders/web/W04-tauri-react-app.md)). | Working in the browser |
+| `apps/marketing` | The marketing site. | Planned ([W05](work-orders/web/W05-marketing-site.md)) |
 | [`apps/popup`](apps/popup) | The small pop-up: a frameless, always-on-top [Tauri 2](https://v2.tauri.app/) window with a global shortcut, for starting and stopping sessions without opening the full app. It replaces the earlier Electron prototype (`zenith-agent`). | Being built; see [work orders](work-orders/popup) |
 | [`packages/core`](packages) | Shared types, the session and reminder logic, and utilities used by both apps. | Planned; see [work orders](work-orders/web) |
-| `apps/api`, `apps/admin`, `ops/` | A sync API with rate limiting, an admin dashboard, and the observability stack (Prometheus, Grafana, Tempo). | Planned; see [work orders](work-orders/platform) |
+| `crates/zenith-sync` | The sync engine: your devices find each other on the local network and keep one set of data in step, like Syncthing and LocalSend, with no account or server. See [the design](docs/SYNC.md). | Designed; see [work orders](work-orders/sync) |
 
 ## Work orders
 
-Every piece of planned work has a work order in [`work-orders/`](work-orders/README.md), one folder per area (`web`, `popup`, `platform`). Each states the goal, what is in and out of scope, and what counts as done, and each is marked honestly: not started, in progress, or done with the evidence.
+Every piece of planned work has a work order in [`work-orders/`](work-orders/README.md), one folder per area (`web`, `popup`, `sync`, `platform`). Each states the goal, what is in and out of scope, and what counts as done, and each is marked honestly: not started, in progress, or done with the evidence.
 
 ## Running it
 
@@ -31,7 +32,7 @@ npm run tauri:popup -- dev
 
 ## Privacy
 
-Everything is stored on your device. There is no account, no server, and no analytics today. The planned sync API is optional and will say so wherever it is offered.
+Everything is stored on your device. There is no account, no server, and no analytics. The planned device-to-device sync stays on your local network and is off until you turn it on.
 
 ## Licence
 

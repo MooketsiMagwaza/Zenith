@@ -8,9 +8,9 @@ Every change is tested the same way, and a release is one tag away.
 
 ## Scope
 
-- GitHub Actions for the whole monorepo: install once, then lint, test, and build each workspace that changed, plus the Python tests and a `cargo check` for the pop-up.
-- Container images for the API and the admin app, with a non-root user, a read-only filesystem, health checks, and a vulnerability scan that fails the build on high severity.
-- A release workflow: a version tag builds the images, the web bundle, and the pop-up installers (P03), and writes release notes.
+- GitHub Actions for the whole monorepo: install once, then lint, test, and build each workspace that changed (the app, the marketing site, the pop-up), plus `cargo check` and `cargo test` for the Tauri shells and the sync engine. (Re-scoped on 7 October 2026; the Python tests apply only if a hosted API is ever built.)
+- Container images, with a non-root user, a read-only filesystem, health checks, and a vulnerability scan that fails the build on high severity, only if a hosted relay or showpiece API is built (S09, X01 to X04).
+- A release workflow: a version tag builds the web bundle, the marketing site, and the desktop installers (P03), and writes release notes.
 - Dependency updates grouped monthly.
 
 ## Done when

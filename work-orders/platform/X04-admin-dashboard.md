@@ -1,6 +1,6 @@
 # X04 — An admin dashboard
 
-State: Not started
+State: Re-scoped on 7 October 2026. With no accounts or server there is nothing to administer remotely; the equivalent is the Devices screen inside the app ([S06](../sync/S06-devices-screen.md)). The admin app below returns only if a hosted relay is built (S09) or if you want it as a showpiece, in which case say so.
 
 ## Goal
 

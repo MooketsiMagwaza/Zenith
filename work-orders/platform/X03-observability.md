@@ -1,6 +1,6 @@
 # X03 — Metrics, traces, logs, and Grafana dashboards
 
-State: Not started
+State: Re-scoped on 7 October 2026. The sync engine gets structured logs and counters and a sync log panel inside the app (see [S06](../sync/S06-devices-screen.md)); nothing leaves the device. The Prometheus, Grafana and Tempo stack below returns only if a hosted relay is built (S09) or if you want it as a showpiece, in which case say so.
 
 ## Goal
 
