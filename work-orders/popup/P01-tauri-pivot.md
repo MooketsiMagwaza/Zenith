@@ -36,5 +36,5 @@ Packaging and signing (P03); sharing code with the web app (W01); sync (X01).
 
 ## Done when
 
-- `cargo check` and `npm run build -w @zenith/popup` pass. (Run and recorded.)
+- `cargo check` and `npm run build -w @zenith/popup` pass. **Done on 7 October 2026:** `npm run build -w @zenith/popup` (type-check and Vite build) passed, and `cargo check` finished with no errors or warnings on Rust 1.97 with the MSVC toolchain. On Windows the linker needs a short target directory when the checkout is deeply nested (`CARGO_TARGET_DIR=C:/zt/popup`).
 - The window opens frameless, transparent, and on top; the shortcut toggles it; a session survives a restart. (Needs a person to run it on Windows; nothing has verified this yet.)
