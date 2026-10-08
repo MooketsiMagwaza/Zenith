@@ -13,6 +13,8 @@
     "dev:app": "npm run dev -w @zenith/app",
     "build:app": "npm run build -w @zenith/app",
     "tauri:app": "npm run tauri -w @zenith/app --",
+    "dev:marketing": "npm run dev -w @zenith/marketing",
+    "build:marketing": "npm run build -w @zenith/marketing",
     "dev:popup": "npm run dev -w @zenith/popup",
     "tauri:popup": "npm run tauri -w @zenith/popup --",
     "test": "npm run test --workspaces --if-present"

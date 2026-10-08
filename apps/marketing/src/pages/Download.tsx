@@ -65,7 +65,7 @@ export function Download() {
       <Section
         id="web"
         eyebrow="The web app"
-        title="Open it, and it is ready."
+        title={APP_URL ? "Open it, and it is ready." : "Nothing to sign up for, nothing to install."}
         intro={
           APP_URL ? (
             <p>
