@@ -566,7 +566,7 @@ src/
     zen/
       TogglZenApp.tsx          ← the whole app: decks, journal, history, zen, tutorial, top bar
       RemindersModal.tsx       ← reminders list + create/edit + permission banner
-    ui/                        ← shadcn primitives (button, dialog, dropdown, etc.)
+    ui/dropdown-menu.tsx       ← the one shadcn primitive in use (the mobile top-bar menu)
   lib/
     zen/
       useTogglZen.ts           ← state hook: decks, tasks, journals, logs, checklist, active
