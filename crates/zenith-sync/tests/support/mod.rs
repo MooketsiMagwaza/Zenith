@@ -84,9 +84,10 @@ fn am_put(d: &mut AutoCommit, obj: &ObjId, k: &str, v: &Value) {
 fn am_json(d: &AutoCommit, obj: &ObjId) -> Value {
     let mut map = JsonMap::new();
     for item in d.map_range(obj, ..) {
-        let v = match item.value {
-            automerge::Value::Object(ObjType::Text) => json!(d.text(&item.id).unwrap()),
-            automerge::Value::Object(ObjType::Map) => am_json(d, &item.id),
+        let (value, id) = d.get(obj, item.key.as_ref()).unwrap().unwrap();
+        let v = match value {
+            automerge::Value::Object(ObjType::Text) => json!(d.text(&id).unwrap()),
+            automerge::Value::Object(ObjType::Map) => am_json(d, &id),
             automerge::Value::Scalar(s) => match s.as_ref() {
                 automerge::ScalarValue::Str(s) => json!(s.as_str()),
                 automerge::ScalarValue::Boolean(b) => json!(b),
@@ -132,12 +133,12 @@ impl Y {
             .unwrap();
         Self(d)
     }
-    pub fn save(&self) -> Vec<u8> {
+    pub fn save(&mut self) -> Vec<u8> {
         self.0
             .transact()
             .encode_state_as_update_v1(&StateVector::default())
     }
-    pub fn fork(&self) -> Self {
+    pub fn fork(&mut self) -> Self {
         Self::load(&self.save())
     }
     pub fn merge(&mut self, other: &mut Self) {

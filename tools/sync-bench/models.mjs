@@ -47,7 +47,7 @@ export const yjs = {
   fork(d) { return this.load(this.save(d)); },
   save: Y.encodeStateAsUpdate,
   load(bytes) { const d = new Y.Doc(); Y.applyUpdate(d, bytes); return d; },
-  merge(a, b) { Y.applyUpdate(a, Y.encodeStateAsUpdate(b)); return a; },
+  merge(a, b) { Y.applyUpdate(a, Y.encodeStateAsUpdate(b, Y.encodeStateVector(a))); return a; },
   json: d => d.getMap('root').get('records').toJSON(),
   dispose: d => d.destroy(),
 };

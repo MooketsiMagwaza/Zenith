@@ -42,7 +42,13 @@ export function year(days = 365) {
     { id: `journal:j${n}`, text: ' Next: revise tomorrow.' },
     ...(n % 31 === 0 ? [{ id: `task:t${n % 144}`, field: 'deleted', value: true }] : []),
   ]);
-  return { schema: 1, records, edits };
+  const documents = { catalog: [] };
+  for (const [id, r] of Object.entries(records)) {
+    const docId = r.kind === 'journal' ? `journal:${r.id}` : r.kind === 'log'
+      ? `logs:${new Date(r.startedAt).toISOString().slice(0, 7)}` : 'catalog';
+    (documents[docId] ??= []).push(id);
+  }
+  return { schema: 1, records, edits, documents };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
