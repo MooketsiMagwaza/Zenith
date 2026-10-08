@@ -1,6 +1,6 @@
 # S02 — The engine crate: identity and the update store
 
-State: In progress (implementation and local checks passed, 8 October 2026; required local commit blocked by worktree metadata permissions; CI not run)
+State: Done (merged in f77ff76; standalone clone baseline rechecked, 8 October 2026; CI not independently verified)
 
 ## Goal
 
@@ -30,6 +30,8 @@ A Rust library, `crates/zenith-sync`, with a stable interface, a device identity
 - Public interface documented in crate rustdoc and `docs/SYNC.md`. Pairing methods explicitly return unavailable until S04; direct pin/receive APIs are trusted-host boundaries, not network authentication.
 - No CI, Windows ACL audit, crash/power-loss injection, network or multi-process ownership test was performed. Identities and test certificates are generated only in temporary test directories; no key/certificate fixture is committed.
 
-## Git blocker
+## Historical Git blocker (resolved)
 
 The checkout's `.git` points to `C:/Users/Nido/Desktop/Projects/Active/zenith/.git/worktrees/zenith-wt-sync`, outside the writable sandbox. `git add` and `git commit` failed creating `index.lock` (Permission denied); the subsequent branch switch failed creating `HEAD.lock`. The failed switch created an empty S03 branch at the original baseline; its reflog and equal tip were checked, and it was deleted without changing any commits. Nothing was committed or pushed. The checkout remains on `feat/sync-engine-skeleton`, with the implementation in its working tree. S03–S05 have not started: the requested commit-then-branch sequence cannot proceed. Resume in this same worktree with Git metadata write access; do not create another repository or rewrite history. The temporary crates.io proxy has been stopped.
+
+The above describes the earlier checkout only. The owner supplied the standalone `zenith-codex-sync` clone on `feat/sync-merge-model`, based on the merged S02 commit f77ff76. `cargo test -p zenith-sync --offline` passed all 8 integration tests here on 8 October 2026 without registry overrides, proxies or network access. S03 proceeds in this clone.

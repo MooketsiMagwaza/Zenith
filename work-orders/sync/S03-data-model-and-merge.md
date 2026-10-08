@@ -1,6 +1,6 @@
 # S03 — The data model and the merge library
 
-State: Not started
+State: In progress (S03 spike started in the standalone clone, 8 October 2026)
 
 ## Goal
 
