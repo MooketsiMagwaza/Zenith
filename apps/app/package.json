@@ -1,5 +1,5 @@
 {
-  "name": "@zenith/web",
+  "name": "@zenith/app",
   "private": true,
   "sideEffects": false,
   "type": "module",

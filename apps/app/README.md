@@ -631,8 +631,8 @@ dist/
 
 ```toml
 [build]
-  command = "npm install && npm run build -w @zenith/web"
-  publish = "apps/web/dist"
+  command = "npm install && npm run build -w @zenith/app"
+  publish = "apps/app/dist"
 
 [[redirects]]
   from = "/*"

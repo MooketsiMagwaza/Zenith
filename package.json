@@ -1,15 +1,18 @@
 {
   "name": "zenith",
   "private": true,
-  "description": "Zenith: time tracking with intention. The web app, the Tauri pop-up, and the platform behind them.",
+  "description": "Zenith: time tracking with intention. The app (browser and Tauri desktop), the Tauri pop-up, and the marketing site.",
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "scripts": {
-    "dev": "npm run dev -w @zenith/web",
-    "build": "npm run build -w @zenith/web",
-    "lint": "npm run lint -w @zenith/web",
+    "dev": "npm run dev -w @zenith/app",
+    "build": "npm run build -w @zenith/app",
+    "lint": "npm run lint -w @zenith/app",
+    "dev:app": "npm run dev -w @zenith/app",
+    "build:app": "npm run build -w @zenith/app",
+    "tauri:app": "npm run tauri -w @zenith/app --",
     "dev:popup": "npm run dev -w @zenith/popup",
     "tauri:popup": "npm run tauri -w @zenith/popup --",
     "test": "npm run test --workspaces --if-present"
