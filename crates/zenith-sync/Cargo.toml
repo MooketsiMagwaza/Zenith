@@ -2,7 +2,7 @@
 name = "zenith-sync"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.88"
+rust-version = "1.90"
 publish = false
 description = "Embedded, local-network change replication for Zenith"
 
