@@ -95,3 +95,19 @@ fn automerge_exposes_concurrent_field_values_for_recovery() {
     let task = a.0.get(records, "task:t").unwrap().unwrap().1;
     assert_eq!(a.0.get_all(task, "name").unwrap().len(), 2);
 }
+
+#[test]
+fn rust_text_offsets_match_javascript_utf16_after_astral_characters() {
+    macro_rules! check {
+        ($model:ty) => {{
+            let mut d = <$model>::create(&small());
+            d.edit(&json!([{"id":"journal:j", "at":7, "text":" INDEX"}]));
+            assert_eq!(d.json()["journal:j"]["content"], "Base 🧭 INDEX café\n");
+            let mut loaded = <$model>::load(&d.save());
+            loaded.edit(&json!([{"id":"journal:j", "at":7, "delete":6, "text":""}]));
+            assert_eq!(loaded.json()["journal:j"]["content"], "Base 🧭 café\n");
+        }};
+    }
+    check!(Am);
+    check!(Y);
+}

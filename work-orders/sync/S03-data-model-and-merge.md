@@ -26,6 +26,7 @@ The network (S05), pairing (S04), and any UI (S06).
 - Rust benchmarks, library decision and interoperability measurements are pending. No actual deployed export is available, so the saved-export acceptance check has not passed. No app code is changed.
 - The explicit `interop.mjs prepare` -> `cargo run -p zenith-sync --example interop --offline` -> `interop.mjs verify` probe passed for both libraries: equivalent synthetic JS snapshots loaded in Rust, all fields matched, Rust field/text edits loaded back in JS with Unicode intact.
 - Expanded randomized operations to checklist, reminder, preferences and new append-only log IDs. The same 11 Rust tests and 7 JS tests passed again. Full-app preference keys and signed migration offsets preserve reported task totals despite historical log discrepancies; unknown/unsynced source values remain in the exact private archive.
+- Found that default Rust text offsets differ from JavaScript. Explicit UTF-16 configuration and an insertion/removal after an astral character now pass: 12 Rust tests (8 existing + 4 S03). The cross-runtime probe now also edits after an emoji at JS offset 7. Benchmark numbers will be refreshed against this configuration.
 
 ## Done when
 

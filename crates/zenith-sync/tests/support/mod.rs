@@ -1,6 +1,8 @@
 //! S03 spike adapters, shared by the benchmark, convergence and interoperability tests.
 //! These are not the network validation API. Input here is trusted synthetic JSON.
-use automerge::{transaction::Transactable, AutoCommit, ObjId, ObjType, ReadDoc, ROOT};
+use automerge::{
+    transaction::Transactable, AutoCommit, LoadOptions, ObjId, ObjType, ReadDoc, TextEncoding, ROOT,
+};
 use serde_json::{json, Map as JsonMap, Value};
 use yrs::{
     types::ToJson, updates::decoder::Decode, Any, Doc, GetString, Map, MapPrelim, MapRef, Out,
@@ -10,7 +12,7 @@ use yrs::{
 pub struct Am(pub AutoCommit);
 impl Am {
     pub fn create(records: &Value) -> Self {
-        let mut d = AutoCommit::new();
+        let mut d = AutoCommit::new_with_encoding(TextEncoding::Utf16CodeUnit);
         d.put(ROOT, "schema", 1_i64).unwrap();
         let rs = d.put_object(ROOT, "records", ObjType::Map).unwrap();
         for (id, r) in records.as_object().unwrap() {
@@ -28,7 +30,13 @@ impl Am {
         Self(d)
     }
     pub fn load(bytes: &[u8]) -> Self {
-        Self(AutoCommit::load(bytes).unwrap())
+        Self(
+            AutoCommit::load_with_options(
+                bytes,
+                LoadOptions::new().text_encoding(TextEncoding::Utf16CodeUnit),
+            )
+            .unwrap(),
+        )
     }
     pub fn save(&mut self) -> Vec<u8> {
         self.0.save()
@@ -117,7 +125,10 @@ fn am_json(d: &AutoCommit, obj: &ObjId) -> Value {
 pub struct Y(pub Doc);
 impl Y {
     pub fn create(records: &Value) -> Self {
-        let d = Doc::new();
+        let d = Doc::with_options(yrs::Options {
+            offset_kind: yrs::OffsetKind::Utf16,
+            ..Default::default()
+        });
         {
             let root = d.get_or_insert_map("root");
             let mut tx = d.transact_mut();
@@ -137,7 +148,10 @@ impl Y {
         Self(d)
     }
     pub fn load(bytes: &[u8]) -> Self {
-        let d = Doc::new();
+        let d = Doc::with_options(yrs::Options {
+            offset_kind: yrs::OffsetKind::Utf16,
+            ..Default::default()
+        });
         d.transact_mut()
             .apply_update(Update::decode_v1(bytes).unwrap())
             .unwrap();

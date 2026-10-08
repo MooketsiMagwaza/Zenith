@@ -21,6 +21,7 @@ if (process.argv[2] === 'prepare') {
     assert.deepEqual(r,expected);
     assert.equal(r['task:t0'].name,'Edited in Rust');
     assert.ok(r['journal:j0'].content.endsWith(' Rust 🧭 café'));
+    assert.ok(r['journal:j0'].content.startsWith('Base 🧭 INDEX café'));
     m.dispose(d); console.log(`${name}: Rust snapshot decoded in JS, all fields and Unicode edits equal.`);
   }
 } else throw new Error('usage: node tools/sync-bench/interop.mjs prepare|verify');
