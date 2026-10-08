@@ -1,0 +1,21 @@
+[package]
+name = "zenith-sync"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
+publish = false
+description = "Embedded, local-network change replication for Zenith"
+
+[dependencies]
+rcgen = { version = "0.14", default-features = false, features = ["ring", "crypto"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
+rusqlite = { version = "0.38", features = ["bundled"] }
+tokio = { version = "1", features = ["sync", "net", "io-util", "time", "rt-multi-thread", "macros"] }
+serde = { version = "1", features = ["derive"] }
+postcard = { version = "1", features = ["alloc"] }
+sha2 = "0.10"
+thiserror = "2"
+x509-parser = "0.18"
+
+[dev-dependencies]
+tempfile = "3"
