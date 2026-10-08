@@ -16,19 +16,18 @@ This README is the **full specification** of the product: every screen, every ke
 4. [Architecture](#architecture)
 5. [Data model](#data-model)
 6. [State management — the two hooks](#state-management--the-two-hooks)
-7. [Accounts & cross-device sync](#accounts--cross-device-sync)
-8. [Reminder engine — how scheduling works](#reminder-engine--how-scheduling-works)
-9. [Notification system — toasts & browser](#notification-system--toasts--browser)
-10. [Design system](#design-system)
-11. [Mobile, PWA, install, fullscreen, safe areas](#mobile-pwa-install-fullscreen-safe-areas)
-12. [Desktop (Electron-ready)](#desktop-electron-ready)
-13. [Keyboard map](#keyboard-map)
-14. [Local storage keys](#local-storage-keys)
-15. [Project structure](#project-structure)
-16. [Running locally](#running-locally)
-17. [Build & deployment](#build--deployment)
-18. [Extending Zenith](#extending-zenith)
-19. [Non-goals](#non-goals)
+7. [Reminder engine — how scheduling works](#reminder-engine--how-scheduling-works)
+8. [Notification system — toasts & browser](#notification-system--toasts--browser)
+9. [Design system](#design-system)
+10. [Mobile, PWA, install, fullscreen, safe areas](#mobile-pwa-install-fullscreen-safe-areas)
+11. [Desktop](#desktop)
+12. [Keyboard map](#keyboard-map)
+13. [Local storage keys](#local-storage-keys)
+14. [Project structure](#project-structure)
+15. [Running locally](#running-locally)
+16. [Build & deployment](#build--deployment)
+17. [Extending Zenith](#extending-zenith)
+18. [Non-goals](#non-goals)
 
 ---
 
@@ -483,86 +482,6 @@ Both Firefox (`scrollbar-color`) and WebKit are themed to a slim brown-to-gold t
 
 ---
 
-## Accounts & cross-device sync
-
-Zenith is local-first, but if you want your decks, journals, history, reminders
-and preferences to follow you across phone, tablet and desktop, you can sign in.
-Accounts are optional — guest mode is fully featured, just per-device.
-
-### Auth
-
-Auth lives on the `/auth` route (linked from the bottom-left "Sign in / Sync"
-button right below the **Tour** button in the sidebar).
-
-- **Email + password** — standard sign-up / sign-in via Lovable Cloud
-  (`supabase.auth.signInWithPassword` / `signUp`). New sign-ups receive a
-  confirmation email.
-- **Google** — one-tap OAuth through the Lovable broker
-  (`lovable.auth.signInWithOAuth("google", { redirect_uri })`). Works in the
-  editor preview, installed PWA, and on custom domains.
-- **Guest** — the "Continue as guest →" link drops you straight into the app.
-  Your data stays on that device only and is never uploaded.
-
-A tiny `AuthProvider` in `src/lib/zen/auth.tsx` wraps the app at `__root.tsx`,
-subscribes to `supabase.auth.onAuthStateChange`, and exposes `useAuth()` →
-`{ user, session, loading, signOut }`. The sidebar `AccountButton` reads from
-that context: signed-out → it's a `<Link to="/auth">`; signed-in → it shows the
-user's email and a `Sign out` action.
-
-### Cloud schema
-
-A single Postgres table backs the whole sync surface — one row per user, four
-JSONB columns. RLS scopes every read/write to `auth.uid() = user_id`.
-
-```sql
-create table public.user_zen_state (
-  user_id     uuid primary key references auth.users on delete cascade,
-  decks       jsonb not null default '[]',
-  logs        jsonb not null default '[]',
-  journals    jsonb not null default '[]',
-  preferences jsonb not null default '{}',
-  updated_at  timestamptz not null default now(),
-  created_at  timestamptz not null default now()
-);
-```
-
-### Sync hook
-
-`useCloudSync(z)` (`src/lib/zen/useCloudSync.ts`) is mounted once at the top
-of `TogglZenApp`. It handles three phases:
-
-1. **Pull + merge on sign-in.** When `useAuth().user` becomes non-null and the
-   local state has hydrated, it pulls the user's row, deep-merges remote with
-   local using the rules below, writes the merged result back to both
-   `localStorage` (via `z.replaceAll(...)`) and the cloud row. A `useRef`
-   guards against running this more than once per session.
-2. **Debounced push.** Any change to `z.decks`, `z.logs` or `z.journals`
-   schedules a 1.5s-debounced `upsert` that includes the latest preferences
-   blob read straight from `localStorage`.
-3. **Sign-out reset.** Clears the merge guard so the next sign-in starts the
-   pull/merge cycle fresh.
-
-### Merge rules — the "post service"
-
-This is the conflict-resolution rule you asked for, implemented in
-`src/lib/zen/sync.ts`:
-
-| Entity | Merge rule | Why |
-|---|---|---|
-| **Stopwatch task `totalSeconds`** | `max(local, remote)` | Highest tracked time wins. |
-| **Countdown task `totalSeconds`** | `max(local, remote)` (= `min(remaining)`) | Most progress wins — equivalent to taking the lower remaining time. |
-| **Task checklist** | longer list wins (ties: remote) | Closer to "additive". |
-| **Task `mode` / `targetSeconds`** | sticky — first non-null wins | Timer mode is locked once set, even across devices. |
-| **Decks** | union by `id`, then `mergeTasks` per deck | Adding a deck on either device shows up everywhere. |
-| **Logs** | union by `id`; if both sides have the same `id`, `hasJournal` is OR'd | Logs are append-only event records. |
-| **Journals** | union by `id`, keep the one with the latest `updatedAt` | Last write wins per journal. |
-| **Preferences** | shallow merge, local wins per key | Taste settings reflect the device you just used. |
-
-The merge always runs in the browser — the database is a dumb JSONB store.
-That keeps the server simple and lets the rules evolve without migrations.
-
----
-
 ## Mobile, PWA, install, fullscreen, safe areas
 
 The app is built mobile-first with a desktop expansion, not the other way around.
@@ -599,13 +518,9 @@ uses the same vantablack splash background.
 
 ---
 
-## Desktop (Electron-ready)
+## Desktop
 
-The app is a pure client-side React + TanStack Start build with all paths
-relative-friendly, so wrapping it in Electron is a 30-line task if you ever
-want a real `.exe` / `.dmg` / `.AppImage`. For now we recommend the installable
-PWA path above — it covers Windows, macOS, Linux and ChromeOS without a second
-build pipeline.
+The desktop surface is [Tauri 2](https://v2.tauri.app/). The small always-on-top pop-up for starting and stopping sessions lives in [`apps/popup`](../popup); a Tauri shell around this full app is planned in [W04](../../work-orders/web/W04-tauri-react-app.md). Until then, the installable PWA above is the way to give the full app its own window.
 
 ---
 
@@ -632,13 +547,14 @@ All state is namespaced (mostly under `toggl_zen_*` for legacy reasons, with the
 | `toggl_zen_active` | `useTogglZen` | `ActiveTask` |
 | `toggl_zen_reminders` | `useReminders` | `Reminder[]` |
 | `zenith.tutorial.seen` | TogglZenApp | `"1"` flag on first dismiss |
+| `zenith.notif.permission` | RemindersModal | the last seen `NotificationPermission` |
 | `zenith.zen.pack` | Zen view | `QuotePackId` |
 | `zenith.zen.customQuotes` | Zen view | `string[]` |
 | `zenith.zen.customWalls` | Zen view | `string[]` (URLs or data-URLs) |
 | `zenith.zen.wallIdx` | Zen view | `number` |
 | `zenith.zen.intervalSec` | Zen view | `0 \| 10 \| 20 \| 30 \| 60` |
 
-`loadLS`/`saveLS` wrap every read/write in a try/catch — if storage is full or disabled (private windows), the app degrades gracefully to "this session only" instead of crashing.
+In the two hooks, `loadLS`/`saveLS` wrap every read/write in a try/catch — if storage is full or disabled (private windows), decks, logs, journals and reminders degrade gracefully to "this session only" instead of crashing. The tutorial flag, the notification permission and the Zen settings are read and written with `localStorage` directly.
 
 ---
 
@@ -650,7 +566,7 @@ src/
     zen/
       TogglZenApp.tsx          ← the whole app: decks, journal, history, zen, tutorial, top bar
       RemindersModal.tsx       ← reminders list + create/edit + permission banner
-    ui/                        ← shadcn primitives (button, dialog, dropdown, etc.)
+    ui/dropdown-menu.tsx       ← the one shadcn primitive in use (the mobile top-bar menu)
   lib/
     zen/
       useTogglZen.ts           ← state hook: decks, tasks, journals, logs, checklist, active
@@ -667,31 +583,34 @@ src/
   router.tsx                   ← TanStack Router bootstrap
   main.tsx                     ← React 19 entry
 index.html                     ← viewport-fit=cover, theme color, root mount
-netlify.toml                   ← build command + SPA redirect
-public/_redirects              ← mirror of the SPA redirect for non-Netlify hosts
+public/_redirects              ← SPA fallback for non-Netlify hosts
 ```
+
+The Netlify settings live in `netlify.toml` at the repository root.
 
 ---
 
 ## Running locally
 
+From the repository root:
+
 ```bash
-bun install
-bun dev
+npm install
+npm run dev
 ```
 
-Open the URL printed by Vite. No env vars, no `.env.local`, no database — open and go.
+Open the URL printed by Vite. The app reads no environment variables and needs no `.env` file and no database — open and go.
 
 ---
 
 ## Build & deployment
 
-Zenith is a **client-only SPA**. The build pipeline targets any static host (Netlify, Vercel static, Cloudflare Pages, plain S3+CDN).
+Zenith is a **client-only SPA**. The build pipeline targets any static host (Netlify, Vercel static, plain S3+CDN).
 
-### What `bun run build` does
+### What `npm run build` does
 
 ```bash
-bun run build       # == vite build
+npm run build       # from the root; runs vite build in this workspace
 ```
 
 Standard Vite build. Output:
@@ -708,12 +627,12 @@ dist/
 
 ### Netlify
 
-`netlify.toml` at the repo root pins the publish directory and the SPA fallback:
+`netlify.toml` at the repo root builds this workspace from the monorepo and pins the publish directory and the SPA fallback:
 
 ```toml
 [build]
-  command = "bun run build"
-  publish = "dist"
+  command = "npm install && npm run build -w @zenith/web"
+  publish = "apps/web/dist"
 
 [[redirects]]
   from = "/*"
@@ -751,7 +670,7 @@ When you add a new persisted entity that targets a deck or task, remember to **c
 
 What Zenith is deliberately not, and won't become:
 
-- **A team tool.** No multi-user, no sync, no shared decks. Single-user, single-device, local-first.
+- **A team tool.** No multi-user, no shared decks. Single-user and local-first. Today each device keeps its own data; sync between your own devices, directly over the local network with no account, is planned ([`docs/SYNC.md`](../../docs/SYNC.md)) and not built.
 - **A billing tool.** No invoicing, no client rates, no exports tuned for accounting.
 - **A todo app.** The checklist on a card is incidental — the unit of work is the card itself.
 - **Gamified.** No streaks, no XP, no nags. There's a card, a timer, and a blank page. Put the time in. Write what happened. Come back tomorrow.

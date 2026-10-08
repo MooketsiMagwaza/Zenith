@@ -9,7 +9,7 @@ Update a work order when scope, evidence, or state changes, in the same commit a
 | ID | Work | State |
 | --- | --- | --- |
 | [W01](web/W01-extract-core.md) | Extract the shared core into `packages/core` | Not started |
-| [W02](web/W02-tidy-stale-parts.md) | Remove every trace of Lovable and Supabase and the other stale parts (first) | Not started |
+| [W02](web/W02-tidy-stale-parts.md) | Remove the stale and unused parts left by the code generator (first) | Done (one check left for a person: the deployed page source) |
 | [W03](web/W03-deploy.md) | Deploy the web app and keep the build green in CI | Not started |
 | [W04](web/W04-tauri-react-app.md) | One React app, as a web interface and as a Tauri desktop app (`apps/app`) | Not started |
 | [W05](web/W05-marketing-site.md) | The marketing site (`apps/marketing`) | Not started |
