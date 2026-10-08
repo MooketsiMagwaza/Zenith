@@ -11,14 +11,14 @@ Update a work order when scope, evidence, or state changes, in the same commit a
 | [W01](web/W01-extract-core.md) | Extract the shared core into `packages/core` | Not started |
 | [W02](web/W02-tidy-stale-parts.md) | Remove the stale and unused parts left by the code generator (first) | Done (one check left for a person: the deployed page source) |
 | [W03](web/W03-deploy.md) | Deploy the web app and keep the build green in CI | Not started |
-| [W04](web/W04-tauri-react-app.md) | One React app, as a web interface and as a Tauri desktop app (`apps/app`) | Not started |
+| [W04](web/W04-tauri-react-app.md) | One React app, as a web interface and as a Tauri desktop app (`apps/app`) | In progress (rename, desktop shell and both builds done; a person must run the window; workspace and pop-up question open) |
 | [W05](web/W05-marketing-site.md) | The marketing site (`apps/marketing`) | Not started |
 
 ## Pop-up (`work-orders/popup`)
 
 | ID | Work | State |
 | --- | --- | --- |
-| [P01](popup/P01-tauri-pivot.md) | Move the pop-up from Electron to Tauri 2 | In progress |
+| [P01](popup/P01-tauri-pivot.md) | Move the pop-up from Electron to Tauri 2 | In progress (one app or two: open for the owner) |
 | [P02](popup/P02-reminders-and-notifications.md) | Reminders and native notifications | Not started |
 | [P03](popup/P03-packaging.md) | Installers, signing, and updates | Not started |
 | [P04](popup/P04-portfolio-captures.md) | Real captures for the portfolio and README | Not started |
