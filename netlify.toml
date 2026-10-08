@@ -1,9 +1,9 @@
 # Netlify configuration for Zenith
-# Standard client-only React SPA built with Vite, from the monorepo root (apps/web).
+# Standard client-only React SPA built with Vite, from the monorepo root (apps/app).
 
 [build]
-  command = "npm install && npm run build -w @zenith/web"
-  publish = "apps/web/dist"
+  command = "npm install && npm run build -w @zenith/app"
+  publish = "apps/app/dist"
 
 [build.environment]
   NODE_VERSION = "20"

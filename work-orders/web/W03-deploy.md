@@ -8,7 +8,7 @@ The web app has a public address that updates on every merge, and a failing buil
 
 ## Scope
 
-- `netlify.toml` at the repository root builds `@zenith/web` from the workspace and publishes `apps/web/dist`. It was updated for the monorepo layout; the site settings in Netlify still need checking by hand.
+- `netlify.toml` at the repository root builds `@zenith/app` from the workspace and publishes `apps/app/dist`. It was updated for the monorepo layout; the site settings in Netlify still need checking by hand.
 - A GitHub Actions workflow that installs once from the root, then lints, tests, and builds the web app, on every pull request.
 - A short "deployment" note in the web README: how it is built, where it lives, how to roll back.
 
