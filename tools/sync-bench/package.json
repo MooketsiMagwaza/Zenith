@@ -1,0 +1,10 @@
+{
+  "name": "zenith-sync-bench",
+  "private": true,
+  "type": "module",
+  "description": "Benchmarks for choosing the sync merge library (S03). Not part of the app build.",
+  "dependencies": {
+    "@automerge/automerge": "^3.5.0",
+    "yjs": "^13.6.33"
+  }
+}

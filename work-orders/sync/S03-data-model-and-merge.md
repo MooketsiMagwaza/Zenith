@@ -17,6 +17,13 @@ Pick the merge library by measuring, and model Zenith's real data so that edits 
 
 The network (S05), pairing (S04), and any UI (S06).
 
+## Evidence in progress, 8 October 2026
+
+- Added deterministic synthetic year generator: 12 decks, 144 tasks, 432 checklist items, 24 reminders, preferences, 2,190 logs and 365 journals (3,168 records), plus 365 edit batches. Both JS and Rust adapters use this same JSON trace, native CRDT journal text, ID-keyed maps and monotonic tombstones.
+- `node --test --test-isolation=none tools/sync-bench/model.test.mjs`: 7 tests passed. Checked six merge orders, duplicate delivery, overlapping journal replacements with Unicode, hidden deleted tasks/children, retained historical logs, and synthetic migration of browser pop-up, Tauri pop-up file and full-app localStorage shapes. Exact original bytes remain in a private migration archive. Corrupt/duplicate/reserved/missing-text inputs fail.
+- Node's default test process isolation was denied by the sandbox (`spawn EPERM`); no-isolation mode passed. First baseline build exhausted the disk; cleaned only this clone's generated Cargo artifacts and disabled debug symbols/incremental compilation for subsequent dev/test runs.
+- Rust convergence and benchmarks are being built offline; library decision and interoperability measurements are pending. No actual deployed export is available, so the saved-export acceptance check has not passed. No app code is changed.
+
 ## Done when
 
 - Property-style tests: two replicas make random edits while apart, merge in any order, and end identical.

@@ -19,3 +19,11 @@ x509-parser = "0.18"
 
 [dev-dependencies]
 tempfile = "3"
+automerge = "0.12"
+yrs = "0.28"
+serde_json = "1"
+proptest = "1"
+
+[[bench]]
+name = "merge"
+harness = false
