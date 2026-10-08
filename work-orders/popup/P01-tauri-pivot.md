@@ -38,3 +38,14 @@ Packaging and signing (P03); sharing code with the web app (W01); sync (X01).
 
 - `cargo check` and `npm run build -w @zenith/popup` pass. **Done on 7 October 2026:** `npm run build -w @zenith/popup` (type-check and Vite build) passed, and `cargo check` finished with no errors or warnings on Rust 1.97 with the MSVC toolchain. On Windows the linker needs a short target directory when the checkout is deeply nested (`CARGO_TARGET_DIR=C:/zt/popup`).
 - The window opens frameless, transparent, and on top; the shortcut toggles it; a session survives a restart. (Needs a person to run it on Windows; nothing has verified this yet.)
+
+## Open question for the owner: one app or two
+
+Still open on 8 October 2026; not decided by anyone yet.
+
+Since W04 the full app has its own Tauri shell (`apps/app/src-tauri`, identifier `app.zenith.desktop`), next to this pop-up (`app.zenith.popup`). So there are now two desktop apps, each with its own data file: the app keeps `zenith.json`, the pop-up keeps `zenith-popup.json`, and nothing connects them.
+
+- **One app, two windows.** The pop-up becomes a second window (frameless, on top, with its shortcuts and tray) of the full app. One process, one store, one sync engine later, and starting a session in either window shows in both. It needs the pop-up's views to read the app's data model (which is W01's shared core) and one combined set of capabilities. `docs/SYNC.md` recommends this.
+- **Two apps.** They stay separate, can be installed and updated apart, and each stays small. They need a way to share data (a common file with locking, or the sync engine syncing between two apps on one machine), or they stay unaware of each other.
+
+The answer decides whether the full app gets a tray icon and the global shortcuts, and how P03 packages the installers. Record the decision and its date here.

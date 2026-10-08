@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from "react";
+import { storage } from "@/lib/platform";
 import type { Deck } from "@/lib/zen/types";
 import {
   type Reminder,
@@ -71,7 +72,7 @@ export function RemindersModal({
     if (!supported) return "unsupported";
     // Hydrate instantly from last-known persisted value, then sync with live state.
     try {
-      const cached = localStorage.getItem(PERM_KEY) as NotificationPermission | null;
+      const cached = storage.getItem(PERM_KEY) as NotificationPermission | null;
       return (cached as NotificationPermission) || Notification.permission;
     } catch {
       return Notification.permission;
@@ -82,7 +83,7 @@ export function RemindersModal({
   useEffect(() => {
     if (!supported || permission === "unsupported") return;
     try {
-      localStorage.setItem(PERM_KEY, permission);
+      storage.setItem(PERM_KEY, permission);
     } catch {
       /* ignore */
     }

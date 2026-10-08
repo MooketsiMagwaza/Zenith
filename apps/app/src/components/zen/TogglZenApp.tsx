@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { appWindow, storage } from "@/lib/platform";
 import { Link } from "@tanstack/react-router";
 import {
   DropdownMenu,
@@ -115,9 +116,9 @@ export function TogglZenApp() {
   // Auto-open tutorial on first visit
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!localStorage.getItem("zenith.tutorial.seen")) {
+    if (!storage.getItem("zenith.tutorial.seen")) {
       setTutorialOpen(true);
-      localStorage.setItem("zenith.tutorial.seen", "1");
+      storage.setItem("zenith.tutorial.seen", "1");
     }
   }, []);
 
@@ -286,17 +287,15 @@ function Nav({
 }) {
   const [isFs, setIsFs] = useState(false);
   useEffect(() => {
-    const sync = () => setIsFs(!!document.fullscreenElement);
-    document.addEventListener("fullscreenchange", sync);
+    const sync = () => {
+      appWindow.isFullscreen().then(setIsFs, () => {});
+    };
+    const off = appWindow.onFullscreenChange(sync);
     sync();
-    return () => document.removeEventListener("fullscreenchange", sync);
+    return off;
   }, []);
   const toggleFs = () => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen?.().catch(() => {});
-    } else {
-      document.documentElement.requestFullscreen?.().catch(() => {});
-    }
+    appWindow.toggleFullscreen().catch(() => {});
   };
 
   const tabs: ViewName[] = ["decks", "journal", "history"];
@@ -1942,31 +1941,31 @@ function ZenMode({
   // Persisted settings
   const [packId, setPackId] = useState<QuotePackId>(() => {
     if (typeof window === "undefined") return "musashi";
-    return (localStorage.getItem("zenith.zen.pack") as QuotePackId) ?? "musashi";
+    return (storage.getItem("zenith.zen.pack") as QuotePackId) ?? "musashi";
   });
   const [customQuotes, setCustomQuotes] = useState<string[]>(() => {
     if (typeof window === "undefined") return [];
-    try { return JSON.parse(localStorage.getItem("zenith.zen.customQuotes") ?? "[]"); } catch { return []; }
+    try { return JSON.parse(storage.getItem("zenith.zen.customQuotes") ?? "[]"); } catch { return []; }
   });
   const [customWallpapers, setCustomWallpapers] = useState<string[]>(() => {
     if (typeof window === "undefined") return [];
-    try { return JSON.parse(localStorage.getItem("zenith.zen.customWalls") ?? "[]"); } catch { return []; }
+    try { return JSON.parse(storage.getItem("zenith.zen.customWalls") ?? "[]"); } catch { return []; }
   });
   const [activeWallIdx, setActiveWallIdx] = useState<number>(() => {
     if (typeof window === "undefined") return 0;
-    return Number(localStorage.getItem("zenith.zen.wallIdx") ?? "0") || 0;
+    return Number(storage.getItem("zenith.zen.wallIdx") ?? "0") || 0;
   });
   const [intervalSec, setIntervalSec] = useState<number>(() => {
     if (typeof window === "undefined") return 20;
-    return Number(localStorage.getItem("zenith.zen.intervalSec") ?? "20") || 20;
+    return Number(storage.getItem("zenith.zen.intervalSec") ?? "20") || 20;
   });
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  useEffect(() => { localStorage.setItem("zenith.zen.pack", packId); }, [packId]);
-  useEffect(() => { localStorage.setItem("zenith.zen.customQuotes", JSON.stringify(customQuotes)); }, [customQuotes]);
-  useEffect(() => { localStorage.setItem("zenith.zen.customWalls", JSON.stringify(customWallpapers)); }, [customWallpapers]);
-  useEffect(() => { localStorage.setItem("zenith.zen.wallIdx", String(activeWallIdx)); }, [activeWallIdx]);
-  useEffect(() => { localStorage.setItem("zenith.zen.intervalSec", String(intervalSec)); }, [intervalSec]);
+  useEffect(() => { storage.setItem("zenith.zen.pack", packId); }, [packId]);
+  useEffect(() => { storage.setItem("zenith.zen.customQuotes", JSON.stringify(customQuotes)); }, [customQuotes]);
+  useEffect(() => { storage.setItem("zenith.zen.customWalls", JSON.stringify(customWallpapers)); }, [customWallpapers]);
+  useEffect(() => { storage.setItem("zenith.zen.wallIdx", String(activeWallIdx)); }, [activeWallIdx]);
+  useEffect(() => { storage.setItem("zenith.zen.intervalSec", String(intervalSec)); }, [intervalSec]);
 
   const wallpapers = useMemo<WallpaperItem[]>(
     () => [
@@ -2918,7 +2917,7 @@ const TUTORIAL_STEPS: Array<{ title: string; body: string; kanji: string; image?
   {
     kanji: "始",
     title: "Welcome to Zenith",
-    body: "Zenith is a deliberate practice timer. Build decks of work, focus one card at a time, and reflect in markdown. Everything lives locally in your browser — no account, no cloud.",
+    body: "Zenith is a deliberate practice timer. Build decks of work, focus one card at a time, and reflect in markdown. Everything lives locally on your device — no account, no cloud.",
     image: tutorialDecks,
     caption: "The Decks view — your projects, cards, and timers at a glance.",
   },

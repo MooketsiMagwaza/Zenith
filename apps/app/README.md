@@ -1,6 +1,6 @@
 # Zenith
 
-> **Time tracking with intention.** A deliberate-practice timer, a deck/card workspace, a markdown journal, a reminder engine, and a full-screen Zen surface — all running locally in your browser, on a single black canvas tuned the color of ink on lacquer.
+> **Time tracking with intention.** A deliberate-practice timer, a deck/card workspace, a markdown journal, a reminder engine, and a full-screen Zen surface — all running locally in your browser or in the desktop app, on a single black canvas tuned the color of ink on lacquer.
 
 Zenith is built for people who treat their work like a craft. Long sessions. Repeated focus blocks. Written reflection. It borrows the visual language of Japanese minimalism, the workflow of a kanban board, and the rhythm of a Pomodoro timer, and folds them into one calm, dark-themed surface that lives entirely in `localStorage` — no servers, no accounts, no analytics.
 
@@ -45,7 +45,7 @@ Zen mode and the rotating quote packs exist to **remove decoration** — when yo
 
 | Goal | What it means in practice |
 |---|---|
-| **Local-first** | Every byte of state lives in `localStorage`. The app loads from a static `index.html` and never talks to a backend. You can fly with it. |
+| **Local-first** | Every byte of state lives on the device: `localStorage` in a browser, a JSON file in the app's data folder on the desktop. The app loads from a static `index.html` and never talks to a backend. You can fly with it. |
 | **One target, one document** | A task has one journal. A deck has one journal. The data layer enforces this — duplicate journals are deduped on hydrate. |
 | **Quiet UI** | Black canvas, gold accent (`#c9a84c`), one display font (DM Sans). No emoji, no rainbow toasts, no celebratory animations. |
 | **Recoverable destructive actions** | Every delete returns an undo handle. Deleting a deck cascades to its tasks *and* their journals, but you get one button press to put it all back. |
@@ -273,10 +273,11 @@ On screens narrower than the `sm:` breakpoint the four top-bar action buttons (R
 - **Routing** — TanStack Router (file-based, client-only). The whole app is mounted by `src/routes/index.tsx` as `<TogglZenApp />`.
 - **Build** — `vite build` produces a static `dist/` deployable to any CDN.
 - **Styling** — Tailwind CSS v4 with the CSS-first config in `src/styles.css` (no `tailwind.config.js`); semantic tokens in `oklch`/hex via `@theme inline`.
-- **State** — `localStorage` only. Two hooks own everything: `useTogglZen` (decks/tasks/logs/journals/active) and `useReminders` (reminder list + scheduler).
+- **State** — on the device only, through `src/lib/platform` (`localStorage` in a browser, the Tauri store file on the desktop). Two hooks own everything: `useTogglZen` (decks/tasks/logs/journals/active) and `useReminders` (reminder list + scheduler).
 - **Markdown** — `react-markdown` + `remark-gfm`, styled via `.markdown-body` rules in `styles.css`.
 - **Notifications** — `sonner` wrapped by the custom `notify` badge in `src/lib/zen/notify.tsx`.
-- **No backend.** Data never leaves the browser.
+- **Desktop** — a Tauri 2 shell in `src-tauri` wraps the same build; see [Desktop](#desktop).
+- **No backend.** Data never leaves the device.
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
@@ -325,7 +326,7 @@ A Journal has *either* a `taskId` *or* a `deckId` (never both meaningful at once
 
 ### `useTogglZen()`
 
-Owner of decks, tasks, logs, journals, and the active session. Hydrates from `localStorage` on mount, sets a `hydrated` flag, then mirrors every state slice back to storage on change via four small effects:
+Owner of decks, tasks, logs, journals, and the active session. Hydrates from storage on mount, sets a `hydrated` flag, then mirrors every state slice back to storage on change via four small effects:
 
 ```ts
 useEffect(() => { if (hydrated) saveLS(KEYS.decks, decks); }, [decks, hydrated]);
@@ -445,7 +446,7 @@ These are aliased into Tailwind via `@theme inline` so you can write `bg-surface
 
 ### Typography
 
-One font: **DM Sans**, weights 200–700 plus italics, loaded from Google Fonts. The `--font-display`, `--font-serif`, and `--font-jp` tokens all point at it — there is no second face, no monospace except in code blocks.
+One font: **DM Sans**, weights 200–700 plus italic 400, bundled with the app from `@fontsource/dm-sans` (imported in `src/main.tsx`), so no font request leaves the device. The `--font-display`, `--font-serif`, and `--font-jp` tokens all point at it — there is no second face, no monospace except in code blocks.
 
 Three text utilities do most of the work:
 
@@ -520,7 +521,20 @@ uses the same vantablack splash background.
 
 ## Desktop
 
-The desktop surface is [Tauri 2](https://v2.tauri.app/). The small always-on-top pop-up for starting and stopping sessions lives in [`apps/popup`](../popup); a Tauri shell around this full app is planned in [W04](../../work-orders/web/W04-tauri-react-app.md). Until then, the installable PWA above is the way to give the full app its own window.
+The same React build runs in a desktop window through [Tauri 2](https://v2.tauri.app/), a small Rust shell around the system webview. The shell is in `src-tauri` ([W04](../../work-orders/web/W04-tauri-react-app.md)); the small always-on-top pop-up is a separate Tauri app in [`apps/popup`](../popup).
+
+- **One window.** An ordinary resizable window (1280 x 820 to start, 360 x 560 at least). Closing it quits. There is no tray icon and no global shortcut, so nothing clashes with the pop-up's `Alt+Space`. A second launch focuses the open window instead of starting another copy (the single-instance plugin), so two processes never write one file.
+- **One small interface.** `src/lib/platform` is the only code that knows where the app runs. It checks for Tauri's injected `__TAURI_INTERNALS__` and exports `storage` (`getItem` / `setItem` / `removeItem`) and `appWindow` (`isFullscreen` / `toggleFullscreen` / `onFullscreenChange`). In a browser they are `localStorage` and the Fullscreen API, as before, and no Tauri code is loaded. On the desktop, `storage` reads `zenith.json` in the app's data folder (identifier `app.zenith.desktop`) once at start-up, keeps reads synchronous from memory, and hands every write to the store plugin, which writes the file 200 ms after the last change and again on exit; `appWindow` makes the native window fullscreen. `src/main.tsx` waits for this choice before the first render.
+- **Notifications.** The notification plugin implements the Web `Notification` API inside the shell, so the reminder code is the same. Clicking a desktop notification does not jump to the card, because the plugin's notifications have no click event.
+- **Content security policy.** Scripts, styles, fonts and connections come only from the app itself; images may also come from `https:` (the Zen wallpapers and wallpapers added by URL) and `data:` / `blob:` (uploaded ones).
+- **Data is separate per surface.** The browser and the desktop app each keep their own copy; nothing is copied between them.
+
+```bash
+npm run tauri:app -- dev     # from the repository root: the dev server plus the desktop window
+npm run tauri:app -- build   # an installer for this system (signing and updates are P03)
+```
+
+You need the Rust toolchain and the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) (on Windows, the Visual Studio C++ build tools and WebView2). If linking fails on Windows because the checkout path is deep, set a short `CARGO_TARGET_DIR` (for example `C:/zt/app`).
 
 ---
 
@@ -537,7 +551,7 @@ The desktop surface is [Tauri 2](https://v2.tauri.app/). The small always-on-top
 
 ## Local storage keys
 
-All state is namespaced (mostly under `toggl_zen_*` for legacy reasons, with the Zen preferences under `zenith.*`):
+All state is namespaced (mostly under `toggl_zen_*` for legacy reasons, with the Zen preferences under `zenith.*`). In a browser these are `localStorage` keys; on the desktop the same keys, with the same string values, are entries in `zenith.json` in the app's data folder:
 
 | Key | Owner | Shape |
 |---|---|---|
@@ -554,7 +568,7 @@ All state is namespaced (mostly under `toggl_zen_*` for legacy reasons, with the
 | `zenith.zen.wallIdx` | Zen view | `number` |
 | `zenith.zen.intervalSec` | Zen view | `0 \| 10 \| 20 \| 30 \| 60` |
 
-In the two hooks, `loadLS`/`saveLS` wrap every read/write in a try/catch — if storage is full or disabled (private windows), decks, logs, journals and reminders degrade gracefully to "this session only" instead of crashing. The tutorial flag, the notification permission and the Zen settings are read and written with `localStorage` directly.
+In the two hooks, `loadLS`/`saveLS` wrap every read/write in a try/catch — if storage is full or disabled (private windows), decks, logs, journals and reminders degrade gracefully to "this session only" instead of crashing. The tutorial flag, the notification permission and the Zen settings call `storage` without that wrapper.
 
 ---
 
@@ -575,15 +589,21 @@ src/
       notify.tsx               ← unified toast badge (stacked, undoable)
       types.ts                 ← Deck / Task / Journal / Log / TimerMode / ViewName
       utils.ts                 ← time + date formatters, generateId
+    platform/index.ts          ← browser or desktop: storage and window calls
   routes/
     __root.tsx                 ← html shell + <Toaster /> + <Outlet />
     index.tsx                  ← mounts <TogglZenApp />
   assets/tutorial/             ← in-app tutorial screenshots
   styles.css                   ← Tailwind v4 + design tokens + markdown styling
   router.tsx                   ← TanStack Router bootstrap
-  main.tsx                     ← React 19 entry
+  main.tsx                     ← React 19 entry, bundled fonts, waits for the platform
 index.html                     ← viewport-fit=cover, theme color, root mount
 public/_redirects              ← SPA fallback for non-Netlify hosts
+src-tauri/
+  src/lib.rs                   ← the desktop shell: plugins and the single-instance guard
+  tauri.conf.json              ← the window, content security policy, bundle settings
+  capabilities/default.json    ← what the window may ask the shell to do
+  icons/                       ← app icons (the same Z as the pop-up)
 ```
 
 The Netlify settings live in `netlify.toml` at the repository root.
@@ -596,7 +616,8 @@ From the repository root:
 
 ```bash
 npm install
-npm run dev
+npm run dev                  # the app in a browser (same as npm run dev:app)
+npm run tauri:app -- dev     # the app in a desktop window (see Desktop above)
 ```
 
 Open the URL printed by Vite. The app reads no environment variables and needs no `.env` file and no database — open and go.
@@ -631,8 +652,8 @@ dist/
 
 ```toml
 [build]
-  command = "npm install && npm run build -w @zenith/web"
-  publish = "apps/web/dist"
+  command = "npm install && npm run build -w @zenith/app"
+  publish = "apps/app/dist"
 
 [[redirects]]
   from = "/*"
@@ -657,7 +678,7 @@ Common extension points and where to start:
 | Add a new quote pack | `src/lib/zen/quotes.ts` — push a new entry into `QUOTE_PACKS` |
 | Add a new wallpaper category | `src/lib/zen/quotes.ts` — push into `WALLPAPER_CATEGORIES` |
 | Change the accent color | `src/styles.css` `:root { --accent-gold: ... }` |
-| Change the font | `src/styles.css` — swap the Google Fonts import and `--font-display` |
+| Change the font | `src/main.tsx` — swap the `@fontsource` imports; `src/styles.css` — `--font-display` |
 | Add a new persisted slice of state | New hook with the same hydrate-gate-then-mirror pattern as `useReminders` |
 | Add a new toast variant | `src/lib/zen/notify.tsx` — extend `ToastKind` and `kindDot` |
 | Add a new top-bar action | `TogglZenApp.tsx` — add to both the desktop button row and the mobile `DropdownMenu` |
