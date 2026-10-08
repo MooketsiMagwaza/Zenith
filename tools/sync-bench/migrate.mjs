@@ -13,6 +13,18 @@ export function migrate(raw, format) {
     for (const [field, key] of Object.entries(fullKeys)) {
       if (key in original) state[field] = typeof original[key] === 'string' ? JSON.parse(original[key]) : original[key];
     }
+    for (const [field,key] of Object.entries({zenPack:'zenith.zen.pack',zenInterval:'zenith.zen.intervalSec'})) {
+      if (key in original) state[field] = field === 'zenInterval' ? Number(original[key]) : original[key];
+    }
+    if ('zenith.tutorial.seen' in original) state.tutorialSeen = original['zenith.tutorial.seen'] === '1';
+    // Preserve ordered custom settings as exact JSON strings in scalar registers.
+    for (const [field,key] of Object.entries({customQuotesJson:'zenith.zen.customQuotes',customWallsJson:'zenith.zen.customWalls'})) {
+      if (key in original) {
+        const value = typeof original[key] === 'string' ? JSON.parse(original[key]) : original[key];
+        if (!Array.isArray(value) || value.some(v => typeof v !== 'string')) throw new Error(`invalid ${key}`);
+        state[field] = JSON.stringify(value);
+      }
+    }
   } else state = format === 'popup-file' ? original.state : original;
   if (!state || typeof state !== 'object' || Array.isArray(state)) throw new Error('invalid source state');
   const records = {}, unmapped = [];
@@ -55,11 +67,25 @@ export function migrate(raw, format) {
   }
   for (const [collection, kind] of [['logs','log'], ['journals','journal'], ['reminders','reminder']])
     for (const r of list(collection)) add(kind, r);
+  // Preserve the old reported total exactly; count future/remote session IDs once.
+  // Signed offsets intentionally retain existing discrepancies rather than rewriting history.
+  for (const t of tasks) {
+    if (!Number.isSafeInteger(t.totalSeconds) || t.totalSeconds < 0) throw new Error('invalid task total');
+    const imported = list('logs').filter(l => l.taskId === t.id).reduce((n,l) => {
+      if (!Number.isSafeInteger(l.duration) || l.duration < 0) throw new Error('invalid log duration');
+      return n + l.duration;
+    },0);
+    const offset = t.totalSeconds - imported;
+    if (!Number.isSafeInteger(offset)) throw new Error('task total overflow');
+    records[`task:${t.id}`].legacySecondsOffset = offset;
+  }
   const prefs = { id: 'shared' };
-  for (const k of ['tutorialSeen','zenPack','zenInterval','zenWallpaper']) if (k in state) prefs[k] = state[k];
+  for (const k of ['tutorialSeen','zenPack','zenInterval','zenWallpaper','customQuotesJson','customWallsJson']) if (k in state) prefs[k] = state[k];
+  if ('zenInterval' in prefs && (!Number.isSafeInteger(prefs.zenInterval) || prefs.zenInterval < 0)) throw new Error('invalid interval');
   add('preferences', prefs);
   // Original bytes retain active timer, unknown preferences, orphan journals, order and metadata.
   // The archive is local/private; never advertise it or commit real source data.
   return { schema: 1, records, sourceHash: digest(`${format}\0${raw}`),
-    archive: { format, raw, sha256: digest(raw) }, deviceLocal: { active: state.active ?? null }, unmapped };
+    archive: { format, raw, sha256: digest(raw) }, deviceLocal: { active: state.active ?? null,
+      wallIndex: original['zenith.zen.wallIdx'] ?? null }, unmapped };
 }

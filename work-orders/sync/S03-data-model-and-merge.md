@@ -24,6 +24,8 @@ The network (S05), pairing (S04), and any UI (S06).
 - Node's default test process isolation was denied by the sandbox (`spawn EPERM`); no-isolation mode passed. First baseline build exhausted the disk; cleaned only this clone's generated Cargo artifacts and disabled debug symbols/incremental compilation for subsequent dev/test runs.
 - `cargo test -p zenith-sync --offline` (debug symbols/incremental disabled): 11 tests passed (8 S02 + 3 S03). The property test ran 96 cases against both libraries: three partitioned replicas, randomized field/text/delete operations, six possible orders, duplicate delivery, save/load restart and a causally later edit after deletion. Separate checks preserve both overlapping text replacements and expose Automerge's conflicting field values.
 - Rust benchmarks, library decision and interoperability measurements are pending. No actual deployed export is available, so the saved-export acceptance check has not passed. No app code is changed.
+- The explicit `interop.mjs prepare` -> `cargo run -p zenith-sync --example interop --offline` -> `interop.mjs verify` probe passed for both libraries: equivalent synthetic JS snapshots loaded in Rust, all fields matched, Rust field/text edits loaded back in JS with Unicode intact.
+- Expanded randomized operations to checklist, reminder, preferences and new append-only log IDs. The same 11 Rust tests and 7 JS tests passed again. Full-app preference keys and signed migration offsets preserve reported task totals despite historical log discrepancies; unknown/unsynced source values remain in the exact private archive.
 
 ## Done when
 

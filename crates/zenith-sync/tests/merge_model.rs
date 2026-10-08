@@ -4,11 +4,16 @@ use serde_json::{json, Value};
 use support::{small, visible, Am, Y};
 
 fn edits(ops: &[u8], actor: usize) -> Value {
-    Value::Array(ops.iter().enumerate().map(|(n, op)| match op % 4 {
+    Value::Array(ops.iter().enumerate().map(|(n, op)| match op % 8 {
         0 => json!({"id":"task:t", "field":"name", "value":format!("actor {actor} edit {n}")}),
         1 => json!({"id":"deck:d", "field":"name", "value":format!("deck {actor}-{n}")}),
         2 => json!({"id":"journal:j", "text":format!(" [{actor}-{n}]🧭")}),
-        _ => json!({"id":"task:t", "field":"deleted", "value":true}),
+        3 => json!({"id":"task:t", "field":"deleted", "value":true}),
+        4 => json!({"id":"checklist:c", "field":"done", "value":n%2==0}),
+        5 => json!({"id":"reminder:r", "field":"label", "value":format!("reminder {actor}-{n}")}),
+        6 => json!({"id":"preferences:shared", "field":"zenInterval", "value":60+n}),
+        _ => json!({"id":format!("log:{actor}-{n}"), "create":{
+            "id":format!("{actor}-{n}"), "kind":"log", "taskId":"t", "duration":n+1, "deleted":false}}),
     }).collect())
 }
 macro_rules! converge {
@@ -32,12 +37,16 @@ macro_rules! converge {
             merged.push(restarted.json());
         }
         assert_eq!(merged[0], merged[1]); assert_eq!(merged[1], merged[2]);
-        let deleted = $ops.iter().any(|ops| ops.iter().any(|op| op % 4 == 3));
+        let deleted = $ops.iter().any(|ops| ops.iter().any(|op| op % 8 == 3));
         assert_eq!(visible(&merged[0], "task:t"), !deleted);
         assert_eq!(visible(&merged[0], "journal:j"), !deleted);
         for (actor, ops) in $ops.iter().enumerate() {
-            for (n, _) in ops.iter().enumerate().filter(|(_, op)| *op % 4 == 2) {
+            for (n, _) in ops.iter().enumerate().filter(|(_, op)| *op % 8 == 2) {
                 assert!(merged[0]["journal:j"]["content"].as_str().unwrap().contains(&format!("[{actor}-{n}]🧭")));
+            }
+            for (n, _) in ops.iter().enumerate().filter(|(_, op)| *op % 8 == 7) {
+                assert_eq!(merged[0][format!("log:{actor}-{n}")]["duration"], n+1);
+                assert!(visible(&merged[0], &format!("log:{actor}-{n}")));
             }
         }
     }};

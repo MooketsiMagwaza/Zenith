@@ -42,6 +42,16 @@ impl Am {
     pub fn edit(&mut self, edits: &Value) {
         let rs = self.0.get(ROOT, "records").unwrap().unwrap().1;
         for e in edits.as_array().unwrap() {
+            if let Some(record) = e.get("create") {
+                let obj = self
+                    .0
+                    .put_object(&rs, e["id"].as_str().unwrap(), ObjType::Map)
+                    .unwrap();
+                for (k, v) in record.as_object().unwrap() {
+                    am_put(&mut self.0, &obj, k, v);
+                }
+                continue;
+            }
             let r = self
                 .0
                 .get(&rs, e["id"].as_str().unwrap())
@@ -156,6 +166,13 @@ impl Y {
         let mut tx = self.0.transact_mut();
         let rs: MapRef = root.get(&tx, "records").unwrap().cast().unwrap();
         for e in edits.as_array().unwrap() {
+            if let Some(record) = e.get("create") {
+                let m = rs.insert(&mut tx, e["id"].as_str().unwrap(), MapPrelim::default());
+                for (k, v) in record.as_object().unwrap() {
+                    m.insert(&mut tx, k.as_str(), Any::from_json(&v.to_string()).unwrap());
+                }
+                continue;
+            }
             let r: MapRef = rs
                 .get(&tx, e["id"].as_str().unwrap())
                 .unwrap()
@@ -214,7 +231,11 @@ impl Y {
 pub fn small() -> Value {
     json!({"deck:d": {"id":"d", "kind":"deck", "name":"Deck", "deleted":false},
         "task:t": {"id":"t", "kind":"task", "deckId":"d", "name":"Task", "deleted":false},
-        "journal:j": {"id":"j", "kind":"journal", "taskId":"t", "content":"Base 🧭 café\n", "deleted":false}})
+        "journal:j": {"id":"j", "kind":"journal", "taskId":"t", "content":"Base 🧭 café\n", "deleted":false},
+        "checklist:c": {"id":"c", "kind":"checklist", "taskId":"t", "text":"Step", "done":false, "deleted":false},
+        "reminder:r": {"id":"r", "kind":"reminder", "targetType":"task", "targetId":"t", "label":"Study", "deleted":false},
+        "preferences:shared": {"id":"shared", "kind":"preferences", "zenInterval":60, "deleted":false},
+        "log:l": {"id":"l", "kind":"log", "taskId":"t", "duration":30, "deleted":false}})
 }
 pub fn visible(records: &Value, id: &str) -> bool {
     let Some(r) = records.get(id) else {

@@ -65,6 +65,9 @@ fn stats(mut samples: Vec<f64>) -> Value {
     json!({"median":samples[3], "min":samples[0], "max":samples[6], "samples":original})
 }
 fn main() {
+    // Cargo runs bench binaries from the package directory, unlike direct execution.
+    std::env::set_current_dir(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."))
+        .unwrap();
     let data: Value = serde_json::from_slice(
         &std::fs::read("tools/sync-bench/generated/year.json")
             .expect("run node tools/sync-bench/generate.mjs from the repository root first"),
