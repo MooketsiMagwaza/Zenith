@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { storage } from "@/lib/platform";
 import { generateId } from "./utils";
 
 export type ReminderRepeat = "none" | "daily" | "weekdays" | "weekly";
@@ -29,7 +30,7 @@ const KEY = "toggl_zen_reminders";
 function loadLS<T>(k: string, fb: T): T {
   if (typeof window === "undefined") return fb;
   try {
-    const raw = localStorage.getItem(k);
+    const raw = storage.getItem(k);
     if (!raw) return fb;
     return JSON.parse(raw) as T;
   } catch {
@@ -40,7 +41,7 @@ function loadLS<T>(k: string, fb: T): T {
 function saveLS(k: string, v: unknown) {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(k, JSON.stringify(v));
+    storage.setItem(k, JSON.stringify(v));
   } catch {
     /* ignore */
   }
@@ -250,10 +251,11 @@ export function fireBrowserNotification(r: Reminder, onClick?: () => void) {
         } catch {
           /* ignore */
         }
-        n.close();
+        n.close?.();
       };
     }
-    setTimeout(() => n.close(), 12000);
+    // The desktop shell's notifications have no close(); the system dismisses them.
+    setTimeout(() => n.close?.(), 12000);
   } catch {
     /* ignore */
   }

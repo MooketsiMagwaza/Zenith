@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { storage } from "@/lib/platform";
 import type { ActiveTask, ChecklistItem, Deck, Journal, Log, Task, TimerMode } from "./types";
 import { generateId } from "./utils";
 
@@ -12,7 +13,7 @@ const KEYS = {
 function loadLS<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
   try {
-    const raw = localStorage.getItem(key);
+    const raw = storage.getItem(key);
     if (!raw) return fallback;
     return JSON.parse(raw) as T;
   } catch {
@@ -23,7 +24,7 @@ function loadLS<T>(key: string, fallback: T): T {
 function saveLS(key: string, val: unknown) {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(key, JSON.stringify(val));
+    storage.setItem(key, JSON.stringify(val));
   } catch {
     // ignore
   }
