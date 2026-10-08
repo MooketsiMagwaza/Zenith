@@ -1,0 +1,111 @@
+@import "tailwindcss" source(none);
+@source "../src";
+
+/* DM Sans, served from this site; no font request goes to a third party. */
+@import "@fontsource/dm-sans/200.css";
+@import "@fontsource/dm-sans/300.css";
+@import "@fontsource/dm-sans/400.css";
+@import "@fontsource/dm-sans/400-italic.css";
+@import "@fontsource/dm-sans/500.css";
+
+/* The app's tokens (apps/app/src/styles.css): one black canvas, warm text, one gold accent. */
+@theme {
+  --font-sans: "DM Sans", system-ui, sans-serif;
+  --color-canvas: #000000;
+  --color-fg: #ece9e3;
+  --color-surface-1: #060606;
+  --color-surface-2: #0a0a0a;
+  --color-surface-3: #111111;
+  --color-line: #1a1a1a;
+  --color-line-strong: #2c2c2c;
+  --color-muted: #8a8a8a;
+  --color-dim: #4a4a4a;
+  --color-ink: #b0a999;
+  --color-gold: #c9a84c;
+  --color-gold-dim: #6e5524;
+}
+
+@layer base {
+  html {
+    background: var(--color-canvas);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    min-height: 100dvh;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+      env(safe-area-inset-left);
+  }
+  ::selection {
+    background: var(--color-gold-dim);
+    color: var(--color-fg);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-gold);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+  a {
+    text-underline-offset: 3px;
+  }
+}
+
+@layer components {
+  .micro-caps {
+    font-weight: 400;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-size: 11px;
+    color: var(--color-muted);
+  }
+  .card-soft {
+    background: linear-gradient(180deg, #0a0a0a 0%, #050505 100%);
+    border: 1px solid var(--color-line);
+    border-radius: 14px;
+    box-shadow:
+      0 10px 30px -12px rgba(0, 0, 0, 0.9),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+  .gold-rule {
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, var(--color-gold-dim) 50%, transparent 100%);
+  }
+  .glow {
+    background: radial-gradient(
+      60% 60% at 50% 0%,
+      rgba(201, 168, 76, 0.14) 0%,
+      rgba(201, 168, 76, 0.04) 45%,
+      transparent 75%
+    );
+  }
+  .shot {
+    border: 1px solid var(--color-line-strong);
+    border-radius: 14px;
+    box-shadow:
+      0 40px 80px -30px rgba(0, 0, 0, 1),
+      0 0 0 1px rgba(255, 255, 255, 0.02),
+      0 0 60px -20px rgba(201, 168, 76, 0.18);
+  }
+  .prose-quiet p + p {
+    margin-top: 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .pulse-gold {
+    animation: pulse-gold 2.4s ease-in-out infinite;
+  }
+}
+@keyframes pulse-gold {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 8px var(--color-gold);
+  }
+  50% {
+    opacity: 0.5;
+    box-shadow: 0 0 2px var(--color-gold);
+  }
+}
