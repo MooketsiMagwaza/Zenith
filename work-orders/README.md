@@ -13,6 +13,12 @@ Update a work order when scope, evidence, or state changes, in the same commit a
 | [W03](web/W03-deploy.md) | Deploy the web app and keep the build green in CI | Not started |
 | [W04](web/W04-tauri-react-app.md) | One React app, as a web interface and as a Tauri desktop app (`apps/app`) | In progress (rename, desktop shell and both builds done; a person must run the window; workspace and pop-up question open) |
 | [W05](web/W05-marketing-site.md) | The marketing site (`apps/marketing`) | In progress (built and passing; not deployed, which needs the owner: see docs/DEPLOY.md) |
+| [W06](web/W06-progress-goals.md) | Progress and goals: optional targets and progress bars | Done in code (tests and builds pass); browser, keyboard and desktop checks open |
+| [W07](web/W07-companion.md) | The companion: "time for ..." messages tied to a card | Not started |
+| [W08](web/W08-rewards-affirmations.md) | Rewards and affirmation screens (optional, quiet) | Not started |
+| [W09](web/W09-pomodoro.md) | A Pomodoro timer | Not started |
+| [W10](web/W10-calendar.md) | A calendar of sessions and reminders, with .ics export | Not started |
+| [W11](web/W11-open-data.md) | Open data: documented formats, export, import, Toggl and Clockify | Not started |
 | [W12](web/W12-open-source.md) | Present Zenith as open source (MIT, chosen 9 October 2026) | Done for the licence and copy; the open-data promise waits for W11 |
 
 ## Pop-up (`work-orders/popup`)
@@ -23,6 +29,7 @@ Update a work order when scope, evidence, or state changes, in the same commit a
 | [P02](popup/P02-reminders-and-notifications.md) | Reminders and native notifications | Not started |
 | [P03](popup/P03-packaging.md) | Installers, signing, and updates | Not started |
 | [P04](popup/P04-portfolio-captures.md) | Real captures for the portfolio and README | Not started |
+| [P05](popup/P05-desktop-pet.md) | An opt-in desktop pet in the pop-up | Not started |
 
 ## Sync (`work-orders/sync`)
 

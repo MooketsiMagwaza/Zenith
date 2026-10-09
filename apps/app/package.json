@@ -14,7 +14,8 @@
     "typecheck": "tsc --noEmit",
     "tauri": "tauri",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
     "@fontsource/dm-sans": "^5.1.0",
@@ -54,6 +55,7 @@
     "prettier": "^3.7.3",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
-    "vite": "^7.3.1"
+    "vite": "^7.3.1",
+    "vitest": "^2.1.9"
   }
 }

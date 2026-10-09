@@ -1,3 +1,5 @@
+import { useFeatures } from "@/lib/zen/useFeatures";
+import { ProgressView, GoalBar, type FeatureStore } from "./ProgressView";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { appWindow, storage } from "@/lib/platform";
 import { Link } from "@tanstack/react-router";
@@ -40,6 +42,7 @@ const ALL_BUILTIN_WALLPAPERS: WallpaperItem[] = Object.values(WALLPAPER_CATEGORI
 
 export function TogglZenApp() {
   const z = useTogglZen();
+  const features = useFeatures();
   const [view, setView] = useState<ViewName>("decks");
   const [activeDeckId, setActiveDeckId] = useState<string | null>(null);
   const [focusOpen, setFocusOpen] = useState(false);
@@ -169,6 +172,7 @@ export function TogglZenApp() {
         {view === "decks" && (
           <DecksView
             z={z}
+            features={features}
             activeDeckId={activeDeckId}
             setActiveDeckId={setActiveDeckId}
             selectMode={selectMode}
@@ -187,6 +191,7 @@ export function TogglZenApp() {
           />
         )}
 
+        {view === "progress" && <ProgressView z={z} features={features} />}
         {view === "journal" && (
           <JournalView z={z} context={journalContext} clearContext={() => setJournalContext(null)} />
         )}
@@ -298,7 +303,7 @@ function Nav({
     appWindow.toggleFullscreen().catch(() => {});
   };
 
-  const tabs: ViewName[] = ["decks", "journal", "history"];
+  const tabs: ViewName[] = ["decks", "journal", "history", "progress"];
   return (
     <nav className="sticky top-0 z-30 bg-background/85 backdrop-blur">
       <div className="pointer-events-none absolute inset-x-6 bottom-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
@@ -447,6 +452,7 @@ function Nav({
 
 function DecksView({
   z,
+  features,
   activeDeckId,
   setActiveDeckId,
   selectMode,
@@ -458,6 +464,7 @@ function DecksView({
   openDeckJournal,
 }: {
   z: ReturnType<typeof useTogglZen>;
+  features: FeatureStore;
   activeDeckId: string | null;
   setActiveDeckId: (id: string) => void;
   selectMode: boolean;
@@ -591,6 +598,7 @@ function DecksView({
             <div className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-border pb-6">
               <div className="min-w-0">
                 <h1 className="font-display text-3xl md:text-4xl">{deck.name}</h1>
+                <GoalBar z={z} features={features} target={`deck:${deck.id}`} />
                 <div className="micro-caps mt-2">
                   <span className="size-1.5 inline-block rounded-full mr-2 align-middle" style={{ background: deck.color }} />
                   {deck.tasks.length} tasks
@@ -705,6 +713,7 @@ function DecksView({
                     }}
                     onSetTimer={(mode, target) => z.setTaskTimer(task.id, mode, target)}
                   />
+                  <GoalBar z={z} features={features} target={`task:${task.id}`} />
                 </div>
               ))}
 

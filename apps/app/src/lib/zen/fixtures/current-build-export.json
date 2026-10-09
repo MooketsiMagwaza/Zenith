@@ -1,0 +1,6 @@
+{
+  "decks": [{"id":"sample-deck","name":"Invented sample: Reading","color":"#c9a84c","tasks":[{"id":"sample-card","deckId":"sample-deck","name":"The Great Gatsby","tag":"Read","totalSeconds":60,"createdAt":1791453600000,"mode":"stopwatch","checklist":[{"id":"sample-item","text":"Chapter one","done":false}]}]}],
+  "logs": [{"id":"sample-log","taskId":"sample-card","taskName":"The Great Gatsby","deckName":"Invented sample: Reading","deckColor":"#c9a84c","duration":60,"startedAt":1791453600000,"endedAt":1791453660000,"hasJournal":true}],
+  "journals": [{"id":"sample-journal","taskId":"sample-card","taskName":"The Great Gatsby","deckId":"sample-deck","deckName":"Invented sample: Reading","deckColor":"#c9a84c","logId":"sample-log","body":"# Invented fixture\nA short reflection.","wordCount":6,"createdAt":1791453600000,"updatedAt":1791453660000}],
+  "active": {"taskIds":[],"deckIds":[],"startedAt":null}
+}
