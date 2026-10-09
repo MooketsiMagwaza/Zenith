@@ -98,9 +98,8 @@ export function Download() {
             <a href={REPO_URL} className="text-gold underline">
               GitHub
             </a>{" "}
-            so you can read it and run it on your own machine. It is not open source: all rights are reserved and no
-            licence is granted to reuse it. You need Node.js 20 or later; the desktop window also needs Rust and the
-            Tauri prerequisites.
+            so you can read it, run it on your own machine, and reuse it under the MIT licence. You need Node.js 20 or
+            later; the desktop window also needs Rust and the Tauri prerequisites.
           </p>
         }
       >

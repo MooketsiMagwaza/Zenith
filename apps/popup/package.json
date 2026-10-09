@@ -2,6 +2,7 @@
   "name": "@zenith/popup",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "Zenith pop-up: a small always-on-top timer and journal window, built with Tauri 2.",
   "scripts": {

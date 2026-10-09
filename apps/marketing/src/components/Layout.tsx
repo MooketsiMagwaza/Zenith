@@ -101,7 +101,13 @@ export function Layout({ page, children }: { page: PageMeta; children: ReactNode
           </div>
         </Container>
         <Container className="pb-10">
-          <p className="text-xs text-muted">© 2026 Zenith. All rights reserved.</p>
+          <p className="text-xs text-muted">
+            © 2026 Mooketsi Vincent Magwaza. Open source under the{" "}
+            <a href={`${REPO_URL}/blob/main/LICENSE`} className="underline hover:text-fg">
+              MIT licence
+            </a>
+            .
+          </p>
         </Container>
       </footer>
     </>

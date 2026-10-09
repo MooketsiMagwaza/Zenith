@@ -5,6 +5,7 @@ description = "Zenith: the full app in a desktop window."
 edition = "2021"
 rust-version = "1.77"
 publish = false
+license = "MIT"
 
 [lib]
 name = "zenith_app_lib"

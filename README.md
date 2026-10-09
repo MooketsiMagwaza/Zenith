@@ -1,6 +1,6 @@
 # Zenith
 
-**Time tracking with intention.** A deliberate-practice timer, a deck and card workspace, a markdown journal, reminders, and a full-screen Zen mode, on one quiet black canvas. Pick one card, run a session, write down what happened.
+**Time tracking with intention.** A deliberate-practice timer, a deck and card workspace, a markdown journal, reminders, and a full-screen Zen mode, on one quiet black canvas. Pick one card, run a session, write down what happened. Open source under the MIT licence.
 
 This repository is a monorepo:
 
@@ -41,4 +41,6 @@ Everything is stored on your device. There is no account, no server, and no anal
 
 ## Licence
 
-All rights reserved. No licence is granted to use, copy, modify, or distribute this code.
+Zenith is open source under the [MIT licence](LICENSE). You can use, copy, modify, and distribute it, including in your own products, as long as the copyright notice and licence text stay with it.
+
+Your data is yours: it lives on your device, and the plan is to keep it in open, documented formats you can export and import (see [W11](work-orders/web/W11-open-data.md)). That part is not built yet.

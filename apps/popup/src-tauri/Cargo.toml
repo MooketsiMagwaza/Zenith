@@ -5,6 +5,7 @@ description = "Zenith pop-up: a small always-on-top timer and journal window."
 edition = "2021"
 rust-version = "1.77"
 publish = false
+license = "MIT"
 
 [lib]
 name = "zenith_popup_lib"
