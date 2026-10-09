@@ -1,6 +1,6 @@
 # Cross-device sync
 
-Status: implementation started, 8 October 2026. S02 supplies the embedded crate, identity and durable update log. Pairing and transport are not yet implemented; opening the engine starts no network activity. Owner decisions remain open. This replaces the hosted sync API with accounts that an earlier plan (X01) described.
+Status: 8 October 2026. S02 is merged. S03 has runnable merge, migration and compatibility spikes; the decision and remaining acceptance checks are below. Pairing and transport are not implemented; opening the engine starts no network activity. Owner: Mooketsi Vincent Magwaza, sole founder. Owner decisions remain open. This replaces the hosted sync API with accounts that an earlier plan (X01) described.
 
 ## The idea
 
@@ -74,18 +74,21 @@ Zenith's data is a handful of kinds of record. They need different merge rules:
 
 | Data | Rule |
 | --- | --- |
-| Decks, cards, checklist items, reminders, preferences | Proposed: field registers ordered by a hybrid logical clock. S03 must settle skew bounds and conflict policy: an HLC alone does not prevent a future-skewed timestamp from dominating other edits. |
-| Deleting a deck or card | A tombstone. An edit made after the deletion on another device keeps the record; one made before does not. This is a rule to decide in S03 and write a test for. |
-| Session logs | Append-only. Two devices never need to merge one log entry, and entries are identified so duplicates collapse. |
-| Journals | Text that two devices may edit at once. A text merge (a CRDT) keeps both edits instead of dropping one. |
+| Decks, tasks (cards), checklist items, reminders, preferences | Automerge field registers: causal later writes replace observed values; concurrent writes have a deterministic displayed winner and retrievable conflicts. No wall-clock/HLC ordering. |
+| Deleting a record | Monotonic tombstone: deletion wins visibility over concurrent and later ordinary edits. Never write `deleted=false` after creation. Restore explicitly under a new ID, retaining the deleted original and its conflicts. |
+| Deleting a deck/task | Hide descendants and targeted reminders via the parent's tombstone; retain their underlying data. Session logs remain visible historical records. Concurrent additions under a deleted parent remain recoverable and hidden. |
+| Session logs | Append-only ID-keyed records. Deduplicate session IDs; reject attempts to change an existing immutable log. Derive journal indicators and task totals rather than mutating logs or syncing accumulated totals as registers. |
+| Journals | Native CRDT text; overlapping replacements retain both insertions and can need human cleanup. Metadata uses field registers. Rust and JS text offsets are explicitly UTF-16. |
 
-**Do not write a merge library by hand.** Use an existing one, either Automerge (a Rust core with JavaScript bindings; documents of maps, lists and text, with a built-in sync protocol) or Yjs with its Rust port yrs (fast, widely used, strong on text). S03 is a short spike that models the real Zenith data in both, measures size and speed on a realistic year of use, and picks one. The pick is not made here.
+**Do not write a merge library by hand.** S03 selects Automerge (Rust core with JavaScript bindings). Yjs/yrs was measured too and is substantially faster; the tradeoff and measurement limitations are in Decisions below. The adapters are test/benchmark code, not a production model or an incoming-data security boundary.
 
-Open design points that S03 must settle: how large the change history grows and how it is compacted; how to split data into several documents so one journal does not carry a year of session logs; how to migrate today's `localStorage` and pop-up file into the first document without loss.
+Documents are split into a catalog, monthly session-log shards and one document per journal. Compression preserves CRDT identities/history; source migration remains read-only until verified. The detailed contracts and unimplemented storage lifecycle are below.
 
 ## Threat model, in plain terms
 
 The risk is another person or device on the same Wi-Fi, such as a café or a shared house.
+
+This table describes required protections. Pairing/transport are not implemented yet; it is not evidence that the current crate defends an exposed LAN endpoint.
 
 | Threat | Answer |
 | --- | --- |
@@ -123,6 +126,68 @@ Remote broadcast notifications are bounded hints (128 entries). A lagging subscr
 - Rotating discovery tokens need a specified shared-secret recognition scheme; certificates and device IDs are public, so they cannot supply that secret. Token rotation alone does not hide IP addresses, ports, timing or stable mDNS hostnames. The discovery privacy goal is limiting advertised identity, not network anonymity.
 - Per-peer cursors are sender-local durable acknowledgements, not CRDT version vectors. S05 must specify resume and acknowledgement ordering and test mid-transfer failures before advancing them.
 - The append-only log has no retention bound or compaction mechanism yet. S03 must measure growth and preserve causality/tombstones when deciding compaction. Application validation, memory limits and quotas still need design work for hostile paired peers.
-- Real exported-data migration, JS/Rust interoperability, merge policy, transport throughput and real-device/network behaviour have not been tested. No merge library has been chosen and no benchmark numbers have been measured.
+- S03 verified synthetic merge convergence and JS/Rust interoperability and measured library costs. Real exported-data migration, transport throughput and real-device/network behaviour remain unverified. There is no production CRDT shape/resource validator yet.
 
-Implementation is currently uncommitted: the sandbox cannot write the linked worktree's Git metadata outside this directory. S02 local tests and the popup workspace check passed; S03–S05 remain not started because the required stacked branch sequence is blocked. S07 remains not started. Nothing here claims that the engine is secure or ready to sync user data.
+S02 is merged (f77ff76). Work continues in the standalone `zenith-codex-sync` clone on `feat/sync-merge-model`; the earlier linked-worktree Git blocker is resolved. All checks use offline caches/installed JS dependencies, without registry overrides or network workarounds. S03 remains in progress until an actual deployed export is checked and the migration/document lifecycle is ready for host integration. S04/S05 and S07 are not started. Nothing here claims that the engine is secure or ready to sync user data.
+
+## Decisions (S03, 8 October 2026)
+
+### Library and conflict policy
+
+Choose **Automerge 0.12.0 in Rust and @automerge/automerge 3.5.0 in JavaScript** for the first integration. The competing spike uses **yrs 0.28.0 / yjs 13.6.33**. Both native-text models converged in the tests, including overlapping journal replacements. Automerge's `get_all`/`getConflicts` exposes simultaneous field values for a recovery interface; this was directly tested in Rust. One core on both sides and its retained history reduce the amount of custom conflict recovery we would need. These are engineering reasons for the choice, not speed claims. Yjs/yrs wins load/merge speed and JS memory in this workload and remains a fallback if representative user data makes Automerge too costly. See the primary [Automerge conflict contract](https://automerge.org/docs/reference/documents/conflicts/) and [Yjs update contract](https://docs.yjs.dev/api/document-updates).
+
+Remove the proposed HLC rule. Causal ordering and deterministic concurrent winners come from the library, independent of wall-clock skew. `createdAt`/`updatedAt`/`fireAt` remain app metadata and reminder inputs; clocks can still affect scheduling, but cannot win a sync register by jumping into the future. A new causal field write resolves its observed conflicting values. A future host must surface retained conflicts rather than silently presenting the winner as the only edit.
+
+Delete wins visibility. Deleted records and edited descendants stay in history/recovery; ordinary edits do not resurrect them, even after observing the deletion. Only a deliberate restore creates a fresh ID. The randomized tests verify this policy under valid operations. A malicious peer can encode a false tombstone or mutate a log: the spike adapters accept trusted traces, and **do not enforce** this boundary. S05 needs a staged, bounded document validator before durable acknowledgement or application, including record kinds, immutable IDs/logs, monotonic tombstones, text/operation counts, dependency limits and schema version. The 256 KiB envelope cap alone does not bound decompressed CRDT memory or CPU.
+
+### Measured costs and assumptions
+
+Runs used Windows x64, Rust 1.97.1 MSVC, Node 24.18.0, and the root release profile (`opt-level=s`, LTO) for native benchmarks. The spike's Automerge dependency declares Rust 1.90 minimum, so the crate manifest now reflects that; only Rust 1.97.1 was tested. Raw seven-sample reports and commands are in [`tools/sync-bench`](../tools/sync-bench/README.md). Times below are medians in milliseconds; sizes are exact measured bytes. Random actor/client IDs can change saved sizes slightly on rerun. Preliminary timings overlapped compilation; the committed JS measurements were refreshed sequentially after compilation stopped. Numbers are single-machine observations, not universal performance promises.
+
+**Unsplit document, imported final year + 365 edit batches:**
+
+| Runtime/library | Saved bytes | Build ms (one sample) | Load ms | Merge ms | Memory |
+| --- | ---: | ---: | ---: | ---: | --- |
+| JS Automerge | 77,958 | 2,085.18 | 409.54 | 72.73 | RSS delta 175.38 MiB; V8 heap delta 15.32 MiB |
+| JS Yjs | 1,271,532 | 53.57 | 30.51 | 1.54 | RSS delta 38.53 MiB; V8 heap delta 12.87 MiB |
+| Rust Automerge | 72,249 | 954.56 | 213.28 | 44.77 | live requested allocation delta 1.89 MiB; build/save peak delta 151.04 MiB |
+| Rust yrs | 1,391,720 | 34.09 | 34.56 | 0.78 | live requested allocation delta 13.98 MiB; build/save peak delta 14.98 MiB |
+
+Merge workload: each side makes 100 field changes and 100 journal insertions while apart, then applies the other side's missing changes. Fork/load/edit time is excluded. Yjs/yrs includes state-vector diff encoding; Automerge uses native merge. Native formats differ in compression and operation layout; compare within each runtime. JS memory includes WASM/runtime/allocator retention, measured after GC with parsed JSON excluded from baseline. V8 heap omits Automerge WASM memory. Rust's counting allocator excludes allocator overhead, OS memory and source JSON. These memory measures are not interchangeable. Live allocation is after saving, peak is build+save; this does not measure peak load/merge memory or the engine's SQLite footprint.
+
+**379-document layout, JS only:**
+
+| Library | Total saved bytes | Load all ms | One journal merge ms | RSS / V8 heap delta MiB |
+| --- | ---: | ---: | ---: | --- |
+| Automerge | 249,691 | 217.04 | 0.7505 | 86.88 / 14.27 |
+| Yjs | 1,249,592 | 47.58 | 0.0209 | 45.54 / 14.49 |
+
+The one-journal workload inserts once per side, unlike the unsplit 100-journal workload. Splitting allows lazy journal loads; actual Tauri startup/render performance was not measured. The catalog could still grow large and needs production quotas.
+
+**Assumed usage**, not user telemetry: 12 decks, 144 tasks, 432 checklist items, 24 reminders, preferences, six sessions/day for 365 days (2,190 logs), one roughly 150-word journal/day (365 journals), and one edit batch/day. Generated JSON with document assignments is 1,158,551 bytes. Prose repeats heavily, which favours Automerge compression. This is a final-state import plus replay of representative edits, **not** a simulation of every keystroke or all incremental history from a real year. Multi-year growth, incompressible/large journals, different workloads and low-memory devices remain unmeasured.
+
+**Implementation effort:** source line counts in the spike (including blanks) are 22 Automerge / 30 Yjs JS adapter lines, and 113 Automerge / 120 yrs Rust adapter+materializer lines. Counts are a limited measured proxy, not hours or production complexity. Both needed native text, transactions, save/load and merge. Rust needed explicit scalar materialization and UTF-16 configuration; JS needed `ImmutableString` for scalar fields versus journal text. Both passed the compatibility probe. App command translation, editor bindings, conflict UI, manifest/checkpoint code and hostile-input validation are unimplemented; estimates of that work are assumptions. Automerge's roughly 151 MiB build/save peak and JS RSS are the largest measured library risk, despite the storage advantage. Revisit the choice against a representative private export before shipping.
+
+### Document boundaries and history (contract)
+
+- One catalog document contains decks, tasks, separate ID-keyed checklist items (`taskId`, `order`), reminders and shared preferences. Records are map entries, not array positions; imports preserve original display order in the private source archive. Journal and log references point to stable IDs.
+- One document per journal keeps native text independent of log history. One document per UTC session-start month holds immutable session logs. The generator produces 379 documents for this year (catalog + 13 months + 365 journals). These boundaries were benchmarked in JS; native sharded memory/load costs have not been measured.
+- Each dataset has a random namespace and a manifest of document IDs/schema/Automerge heads. Document IDs include that namespace. Bootstrap new peers from existing saved bytes. Never independently create a new `records` object for an already existing document: concurrent creation of nested maps yields conflicting containers, not automatic combination of their children. Independent imports use separate namespaces until reconciled deliberately. Genesis/manifest crash recovery is not yet implemented.
+- Each host generates fresh actor IDs; an actor is not a device certificate ID. A document's saved bytes preserve operation IDs, tombstones and conflicts. `save` compresses history; it does **not** reset causality or erase old edits. Save/load followed by late merges is tested. Do not rebuild a live document from materialized JSON or garbage-collect tombstones on a timer. Yjs update merging alone also does not garbage-collect content ([primary documentation](https://docs.yjs.dev/api/document-updates)); its default GC is a different history/recovery tradeoff ([Y.Doc](https://docs.yjs.dev/api/y.doc)).
+- Planned storage compaction: checkpoint per document after 1,000 accepted changes or on clean shutdown (threshold assumed, not measured), write+fsync a new versioned snapshot, read it back, then atomically publish its manifest. Keep the previous snapshot for recovery. A future protocol must support snapshot bootstrap and generation acknowledgements before deleting sender log rows/cursors. S02's SQLite log still has **no pruning, quota or checkpoint implementation**. Until that exists, keep all updates; there is no safe bounded-history claim. Resetting history into a new epoch would require every retained peer's acknowledgement and a forced rebootstrap of excluded old peers.
+
+### Migration without silent loss
+
+The read-only candidate builder is `tools/sync-bench/migrate.mjs`. It supports browser `zenith.popup.state`, the Tauri `zenith-popup.json` file's `state` member, and an export object of full-app `toggl_zen_decks`, `toggl_zen_logs`, `toggl_zen_journals`, `toggl_zen_reminders`, `toggl_zen_active` values. Full-app preferences also live in `zenith.tutorial.seen` and `zenith.zen.*` keys; custom quote/wall arrays are preserved as exact JSON scalar fields. Local wallpaper indexes and active timers remain device-local. Permission grants remain device-local too. Unknown keys and fields are retained in the exact private archive, not silently discarded.
+
+Flatten nested full-app tasks and checklists into ID-keyed records, map journal `body` to native `content`, and preserve journal links, cached labels, timestamps, counts, orphan records and all logs. Never apply the full app's existing journal cleanup/deduplication to the migration source. Duplicate IDs, malformed JSON/collections, reserved schema fields or missing journal text fail the candidate build; keep the original and report the conflict. Matching target IDs do not authorize dropping separate journal IDs. An actual older/deployed export is still needed to validate assumptions about optional and unknown fields.
+
+Task totals require special handling: set `legacySecondsOffset = imported totalSeconds - sum(imported unique log durations for that task)`, retaining signed discrepancies. Thereafter derive the display total as this offset plus the sum of unique session logs; never increment a synced `totalSeconds` register. A test with a reported total of 99 seconds and 30 seconds of imported logs reproduces 99 rather than 129. Retain the old `totalSeconds` as source metadata only. Cross-source duplicate logs/offsets require reconciliation, not addition of two imports' offsets. Session IDs must be globally unique; independently running timers can legitimately produce different sessions.
+
+The production installation protocol is a **contract, not implemented app integration**: quiesce writes and snapshot all keys/file bytes before hydration can mutate them; store an exact private backup and source SHA-256; build the candidate in a fresh namespace; compare every source ID, field/text and log count, and verify save/load; write/fsync snapshots and manifest; atomically switch only after verification and a durable migration receipt keyed by source hash. Restart resumes the candidate/receipt without duplicating sessions. Do not delete the original or replace an established sync dataset on retry. Stop/resume active timers locally without inventing logs. The builder neither reads live storage nor performs that switch. Real source archives must stay in the private app directory and never enter this public repository.
+
+### Verification and boundary
+
+`cargo test -p zenith-sync --offline`: 12 tests passed, including 8 S02 and 4 S03. The property test runs 96 cases on both libraries: three replicas editing decks, tasks, checklist items, journals, reminders, preferences and new session-log IDs while partitioned; shuffled delivery, duplicates and save/load restarts; tombstone visibility and retained text/log content. Separate tests cover conflicting field recovery, overlapping text replacement and UTF-16 offsets after emoji. `node --test --test-isolation=none tools/sync-bench/model.test.mjs`: 7 tests passed, including all six merge permutations and three synthetic migration shapes. The explicit JS -> Rust edit -> JS probe passed both formats, exact field equality, Unicode, and insertion at offset 7 after an emoji.
+
+This became a larger spike than a library swap: persistence shapes, totals, retained conflicts, document bootstrap and Unicode offsets all affect correctness. Stop at this committed, passing measurement boundary. S03's actual deployed-export check and production lifecycle validation remain open; it is not marked Done. S04/S05 have not begun and no stacked branch is created prematurely. S07 stays Not started. No CI, real devices, hostile network, Tauri integration, migration crash injection, multi-process ownership, adversarial CRDT/resource tests or network throughput were run. Owner decisions: confirm delete-wins with explicit restore, shared versus device-local preferences, and one app/process versus two; provide a representative private deployed export for the acceptance check. Existing S01 scope/relay questions remain open.

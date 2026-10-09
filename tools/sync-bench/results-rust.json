@@ -1,0 +1,80 @@
+{
+  "note": "load includes decode/integrate; merge excludes fork/edit, includes yrs state-vector diff encoding",
+  "profile": "release opt-level=s, LTO; counting allocator",
+  "records": 3168,
+  "results": [
+    {
+      "build_ms": 954.5603,
+      "journal_concurrent_insertions_retained": true,
+      "library": "automerge",
+      "live_allocation_delta_bytes": 1986569,
+      "load_ms": {
+        "max": 236.3529,
+        "median": 213.2788,
+        "min": 129.8927,
+        "samples": [
+          167.1473,
+          129.8927,
+          220.7166,
+          236.3529,
+          207.486,
+          226.9125,
+          213.2788
+        ]
+      },
+      "merge_ms": {
+        "max": 49.2367,
+        "median": 44.7652,
+        "min": 26.5209,
+        "samples": [
+          30.3632,
+          26.5209,
+          44.7652,
+          45.6227,
+          43.8878,
+          47.672399999999996,
+          49.2367
+        ]
+      },
+      "peak_allocation_delta_bytes": 158376431,
+      "saved_bytes": 72249
+    },
+    {
+      "build_ms": 34.0884,
+      "journal_concurrent_insertions_retained": true,
+      "library": "yjs",
+      "live_allocation_delta_bytes": 14663958,
+      "load_ms": {
+        "max": 37.8414,
+        "median": 34.560100000000006,
+        "min": 31.241600000000002,
+        "samples": [
+          34.5713,
+          36.9024,
+          34.560100000000006,
+          37.8414,
+          31.241600000000002,
+          31.8737,
+          31.499100000000002
+        ]
+      },
+      "merge_ms": {
+        "max": 1.2631999999999999,
+        "median": 0.7812,
+        "min": 0.7207,
+        "samples": [
+          0.8462,
+          1.2631999999999999,
+          1.2577,
+          0.7371,
+          0.7207,
+          0.7812,
+          0.7693
+        ]
+      },
+      "peak_allocation_delta_bytes": 15712682,
+      "saved_bytes": 1391720
+    }
+  ],
+  "samples": 7
+}
