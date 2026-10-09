@@ -57,4 +57,4 @@ export type ActiveTask = {
   startedAt: number | null;
 };
 
-export type ViewName = "decks" | "journal" | "history";
+export type ViewName = "decks" | "journal" | "history" | "progress";

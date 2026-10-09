@@ -1,3 +1,4 @@
+import { migrateActive } from "./migration";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { storage } from "@/lib/platform";
 import type { ActiveTask, ChecklistItem, Deck, Journal, Log, Task, TimerMode } from "./types";
@@ -37,22 +38,22 @@ const seedDecks = (): Deck[] => {
   return [
     {
       id: academicsId,
-      name: "Academics",
+      name: "Sample: Academics",
       color: "#c9a84c",
       tasks: [
-        { id: generateId(), deckId: academicsId, name: "Study session", tag: "Study", totalSeconds: 5040, createdAt: now },
-        { id: generateId(), deckId: academicsId, name: "Lab", tag: "Lab", totalSeconds: 1320, createdAt: now },
-        { id: generateId(), deckId: academicsId, name: "Practice", tag: "Drill", totalSeconds: 1800, createdAt: now },
+        { id: generateId(), deckId: academicsId, name: "Study session", tag: "Study", totalSeconds: 0, createdAt: now },
+        { id: generateId(), deckId: academicsId, name: "Lab", tag: "Lab", totalSeconds: 0, createdAt: now },
+        { id: generateId(), deckId: academicsId, name: "Practice", tag: "Drill", totalSeconds: 0, createdAt: now },
       ],
     },
     {
       id: projectsId,
-      name: "Projects",
+      name: "Sample: Projects",
       color: "#3aa6a0",
       tasks: [
-        { id: generateId(), deckId: projectsId, name: "Build", tag: "Code", totalSeconds: 2400, createdAt: now },
+        { id: generateId(), deckId: projectsId, name: "Build", tag: "Code", totalSeconds: 0, createdAt: now },
         { id: generateId(), deckId: projectsId, name: "Design", tag: "Sketch", totalSeconds: 0, createdAt: now },
-        { id: generateId(), deckId: projectsId, name: "Writeup", tag: "Doc", totalSeconds: 600, createdAt: now },
+        { id: generateId(), deckId: projectsId, name: "Writeup", tag: "Doc", totalSeconds: 0, createdAt: now },
       ],
     },
   ];
@@ -70,7 +71,7 @@ export function useTogglZen() {
   // hydrate
   useEffect(() => {
     const d = loadLS<Deck[] | null>(KEYS.decks, null);
-    if (d && d.length) {
+    if (d !== null) {
       setDecks(d);
       setLogs(loadLS<Log[]>(KEYS.logs, []));
       // Dedupe legacy duplicate journals: keep most recently updated per (taskId|deckId).
@@ -105,20 +106,7 @@ export function useTogglZen() {
       saveLS(KEYS.journals, []);
     }
     const loaded = loadLS<ActiveTask & { taskId?: string | null; deckId?: string | null }>(KEYS.active, { taskIds: [], deckIds: [], startedAt: null });
-    // Migrate legacy single-task shape
-    if (loaded && (loaded as { taskId?: string }).taskId !== undefined && !Array.isArray((loaded as ActiveTask).taskIds)) {
-      setActive({
-        taskIds: loaded.taskId ? [loaded.taskId] : [],
-        deckIds: loaded.deckId ? [loaded.deckId] : [],
-        startedAt: loaded.startedAt ?? null,
-      });
-    } else {
-      setActive({
-        taskIds: Array.isArray(loaded.taskIds) ? loaded.taskIds : [],
-        deckIds: Array.isArray(loaded.deckIds) ? loaded.deckIds : [],
-        startedAt: loaded.startedAt ?? null,
-      });
-    }
+    setActive(migrateActive(loaded));
     setHydrated(true);
   }, []);
 
@@ -140,62 +128,39 @@ export function useTogglZen() {
   const elapsed = active.startedAt ? Math.floor((Date.now() - active.startedAt) / 1000) : 0;
   void tick;
 
-  const startTasks = useCallback((tasks: Task[]) => {
-    if (!tasks.length) return;
-    setActive((prev) => {
-      if (prev.startedAt && prev.taskIds.length) {
-        const dur = Math.floor((Date.now() - prev.startedAt) / 1000);
-        prev.taskIds.forEach((tid, i) => {
-          commitStop(tid, prev.deckIds[i] ?? null, prev.startedAt!, dur);
-        });
-      }
-      return {
-        taskIds: tasks.map((t) => t.id),
-        deckIds: tasks.map((t) => t.deckId),
-        startedAt: Date.now(),
-      };
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Current refs avoid stale deck snapshots and side effects inside React state updaters.
+  const decksRef = useRef(decks);
+  decksRef.current = decks;
+  const activeRef = useRef(active);
+  activeRef.current = active;
 
-  const startTask = useCallback((task: Task) => {
-    startTasks([task]);
-  }, [startTasks]);
-
-  const commitStop = (taskId: string, deckId: string | null, startedAt: number, dur: number) => {
-    const deck = decks.find((d) => d.id === deckId);
-    const task = deck?.tasks.find((t) => t.id === taskId);
+  const commitStop = (taskId: string, deckId: string | null, startedAt: number, dur: number, endedAt = Date.now()) => {
+    const deck = decksRef.current.find(d => d.id === deckId);
+    const task = deck?.tasks.find(t => t.id === taskId);
     if (!deck || !task || dur < 1) return;
-    const log: Log = {
-      id: generateId(),
-      taskId: task.id,
-      taskName: task.name,
-      deckName: deck.name,
-      deckColor: deck.color,
-      duration: dur,
-      startedAt,
-      endedAt: Date.now(),
-      hasJournal: false,
-    };
-    setLogs((prev) => [log, ...prev]);
-    setDecks((prev) =>
-      prev.map((d) =>
-        d.id !== deck.id
-          ? d
-          : { ...d, tasks: d.tasks.map((t) => (t.id === task.id ? { ...t, totalSeconds: t.totalSeconds + dur } : t)) }
-      )
-    );
+    const log: Log = { id: generateId(), taskId, taskName: task.name, deckName: deck.name, deckColor: deck.color, duration: dur, startedAt, endedAt, hasJournal: false };
+    setLogs(prev => [log, ...prev]);
+    setDecks(prev => prev.map(d => d.id !== deck.id ? d : { ...d, tasks: d.tasks.map(t => t.id !== taskId ? t : { ...t, totalSeconds: t.totalSeconds + dur }) }));
   };
 
-  const stopTask = useCallback(() => {
-    if (!active.startedAt || !active.taskIds.length) return;
-    const dur = Math.floor((Date.now() - active.startedAt) / 1000);
-    active.taskIds.forEach((tid, i) => {
-      commitStop(tid, active.deckIds[i] ?? null, active.startedAt!, dur);
-    });
-    setActive({ taskIds: [], deckIds: [], startedAt: null });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, decks]);
+  const stopTask = useCallback((endedAt = Date.now()) => {
+    const current = activeRef.current;
+    if (current.startedAt === null || !current.taskIds.length) return;
+    const dur = Math.max(0, Math.floor((endedAt - current.startedAt) / 1000));
+    current.taskIds.forEach((tid, i) => commitStop(tid, current.deckIds[i] ?? null, current.startedAt!, dur, endedAt));
+    const empty = { taskIds: [], deckIds: [], startedAt: null };
+    activeRef.current = empty;
+    setActive(empty);
+  }, []);
+
+  const startTasks = useCallback((tasks: Task[]) => {
+    if (!tasks.length) return;
+    stopTask();
+    const next = { taskIds: tasks.map(t => t.id), deckIds: tasks.map(t => t.deckId), startedAt: Date.now() };
+    activeRef.current = next;
+    setActive(next);
+  }, [stopTask]);
+  const startTask = useCallback((task: Task) => startTasks([task]), [startTasks]);
 
   const replaceAll = useCallback(
     (s: { decks: Deck[]; logs: Log[]; journals: Journal[] }) => {
