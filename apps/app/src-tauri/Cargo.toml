@@ -5,6 +5,7 @@ description = "Zenith: the full app in a desktop window."
 edition = "2021"
 rust-version = "1.77"
 publish = false
+license = "MIT"
 
 [lib]
 name = "zenith_app_lib"
@@ -18,10 +19,3 @@ tauri = { version = "2", features = [] }
 tauri-plugin-notification = "2"
 tauri-plugin-single-instance = "2"
 tauri-plugin-store = "2"
-
-[profile.release]
-codegen-units = 1
-lto = true
-opt-level = "s"
-panic = "abort"
-strip = true

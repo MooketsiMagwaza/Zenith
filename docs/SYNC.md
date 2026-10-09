@@ -1,6 +1,6 @@
 # Cross-device sync
 
-Status: design draft, 7 October 2026. Nothing here is built. It replaces the hosted sync API with accounts that an earlier plan (X01) described.
+Status: implementation started, 8 October 2026. S02 supplies the embedded crate, identity and durable update log. Pairing and transport are not yet implemented; opening the engine starts no network activity. Owner decisions remain open. This replaces the hosted sync API with accounts that an earlier plan (X01) described.
 
 ## The idea
 
@@ -49,7 +49,7 @@ Non-goals for the first version: syncing across different networks (needs a rela
   1. Device A opens "Add a device" and shows a QR code and a six-digit code. B opens the same screen and scans or types it.
   2. They run a password-authenticated key exchange over the connection (for example SPAKE2 or CPace), using that code, so that someone who sees the traffic, or starts a fake pairing, cannot learn the code or sit in the middle. As an alternative, both screens show a short string to compare (a "short authentication string" check).
   3. Each stores the other's certificate fingerprint. Later connections are mutual TLS and accept only pinned fingerprints.
-- **Revoking** a device deletes its pinned fingerprint on the others; it cannot reconnect without pairing again. A lost device is revoked from any other device.
+- **Revoking** a device deletes its pin locally; it cannot reconnect to that device without pairing again. Each other device must revoke it separately. Revocation is not automatically distributed, and cannot erase data already copied to a lost device.
 - **Limits:** pairing attempts are rate limited (for example five wrong codes, then a five-minute lock), a pairing window closes after a couple of minutes, and every frame has a size limit.
 
 ## Discovery
@@ -74,7 +74,7 @@ Zenith's data is a handful of kinds of record. They need different merge rules:
 
 | Data | Rule |
 | --- | --- |
-| Decks, cards, checklist items, reminders, preferences | Each field is a last-writer-wins register ordered by a hybrid logical clock, so a clock that is wrong by minutes cannot override a later edit forever. |
+| Decks, cards, checklist items, reminders, preferences | Proposed: field registers ordered by a hybrid logical clock. S03 must settle skew bounds and conflict policy: an HLC alone does not prevent a future-skewed timestamp from dominating other edits. |
 | Deleting a deck or card | A tombstone. An edit made after the deletion on another device keeps the record; one made before does not. This is a rule to decide in S03 and write a test for. |
 | Session logs | Append-only. Two devices never need to merge one log entry, and entries are identified so duplicates collapse. |
 | Journals | Text that two devices may edit at once. A text merge (a CRDT) keeps both edits instead of dropping one. |
@@ -106,3 +106,23 @@ The risk is another person or device on the same Wi-Fi, such as a café or a sha
 ## Work orders
 
 See [`work-orders/sync`](../work-orders/sync): S01 to S09.
+
+## Implemented contract and limits (S02)
+
+`Engine::open(app_private_directory)` creates or loads a P-256 key and rcgen self-signed certificate in one versioned `identity.bin`, and opens `updates.sqlite`. The full device ID is SHA-256 of DER SubjectPublicKeyInfo. Corrupt, oversized, newer, or mismatched identity material fails closed rather than silently changing identity. A first-write crash requires explicit host recovery. The host must ensure one engine/process owns a directory. Unix creation uses mode 0600; Windows inherits the supplied directory ACL, which has not been audited. Keys and SQLite are not encrypted at rest.
+
+The public Rust interface covers identity, listing/revoking peers, local changes, remote subscriptions, durable catch-up and status. `start_pairing`/`finish_pairing` currently return an explicit S04-unavailable error. `UpdateStore::pin` and `Engine::receive_remote_change` are trusted-host APIs, not authentication endpoints: a supplied peer ID alone proves nothing. S04/S05 must enforce pairing and TLS before calling them.
+
+Change envelope v1 has a version, SHA-256 content ID and 1–262,144 opaque payload bytes. The digest covers a domain separator, version and payload. The application must put document ID and operation identity inside the payload. Envelope validation checks version, length and digest; it cannot validate app/CRDT semantics. De-duplication is global by content ID. SQLite uses WAL and FULL synchronous writes; sequence numbers order local ingestion only. A peer cursor refers to this sender's log, advances monotonically only within its durable head, and must advance only after a remote durable acknowledgement. Received changes are kept for forwarding to other peers. No compaction or log quota exists yet.
+
+Remote broadcast notifications are bounded hints (128 entries). A lagging subscriber must recover through `changes_after`; SQLite is the source of truth. Revocation removes the peer and cursor but keeps changes. Future database schemas are refused. The crate docs (`cargo doc -p zenith-sync --no-deps`) describe this boundary.
+
+### Outstanding engineering risks
+
+- Pairing and TLS are still design requirements, not implemented protections. The host must not expose pin/receive methods to untrusted input. Certificate possession must be verified in TLS as well as matching the stored pin.
+- Rotating discovery tokens need a specified shared-secret recognition scheme; certificates and device IDs are public, so they cannot supply that secret. Token rotation alone does not hide IP addresses, ports, timing or stable mDNS hostnames. The discovery privacy goal is limiting advertised identity, not network anonymity.
+- Per-peer cursors are sender-local durable acknowledgements, not CRDT version vectors. S05 must specify resume and acknowledgement ordering and test mid-transfer failures before advancing them.
+- The append-only log has no retention bound or compaction mechanism yet. S03 must measure growth and preserve causality/tombstones when deciding compaction. Application validation, memory limits and quotas still need design work for hostile paired peers.
+- Real exported-data migration, JS/Rust interoperability, merge policy, transport throughput and real-device/network behaviour have not been tested. No merge library has been chosen and no benchmark numbers have been measured.
+
+Implementation is currently uncommitted: the sandbox cannot write the linked worktree's Git metadata outside this directory. S02 local tests and the popup workspace check passed; S03–S05 remain not started because the required stacked branch sequence is blocked. S07 remains not started. Nothing here claims that the engine is secure or ready to sync user data.

@@ -1,6 +1,7 @@
 {
   "name": "zenith",
   "private": true,
+  "license": "MIT",
   "description": "Zenith: time tracking with intention. The app (browser and Tauri desktop), the Tauri pop-up, and the marketing site.",
   "workspaces": [
     "apps/*",

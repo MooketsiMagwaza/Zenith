@@ -13,6 +13,7 @@ Update a work order when scope, evidence, or state changes, in the same commit a
 | [W03](web/W03-deploy.md) | Deploy the web app and keep the build green in CI | Not started |
 | [W04](web/W04-tauri-react-app.md) | One React app, as a web interface and as a Tauri desktop app (`apps/app`) | In progress (rename, desktop shell and both builds done; a person must run the window; workspace and pop-up question open) |
 | [W05](web/W05-marketing-site.md) | The marketing site (`apps/marketing`) | In progress (built and passing; not deployed, which needs the owner: see docs/DEPLOY.md) |
+| [W12](web/W12-open-source.md) | Present Zenith as open source (MIT, chosen 9 October 2026) | Done for the licence and copy; the open-data promise waits for W11 |
 
 ## Pop-up (`work-orders/popup`)
 
@@ -30,7 +31,7 @@ Cross-device sync works device to device on the local network, like Syncthing an
 | ID | Work | State |
 | --- | --- | --- |
 | [S01](sync/S01-design.md) | Design the sync, and settle its open questions | In progress |
-| [S02](sync/S02-engine-skeleton.md) | The engine crate: identity and the update store | Not started |
+| [S02](sync/S02-engine-skeleton.md) | The engine crate: identity and the update store | In progress (local checks passed; Git commit blocked) |
 | [S03](sync/S03-data-model-and-merge.md) | The data model and the merge library (Automerge or Yjs, by measurement) | Not started |
 | [S04](sync/S04-discovery-and-pairing.md) | Discovery, pairing and attempt limits | Not started |
 | [S05](sync/S05-transport-and-protocol.md) | Transport and the sync protocol | Not started |
