@@ -209,3 +209,48 @@ async fn dns_sd_register_and_resolve_on_loopback() {
     let ann = Mdns::from_service(&resolved).unwrap();
     assert_eq!(b.recognize(&ann, 600).unwrap(), Some(a.identity().id()));
 }
+
+#[tokio::test]
+async fn multicast_fallback_on_loopback() {
+    let sender = discovery::multicast_socket(Ipv4Addr::LOCALHOST).unwrap();
+    let receiver = discovery::multicast_socket(Ipv4Addr::LOCALHOST).unwrap();
+    let a = Announcement {
+        epoch: 10,
+        token: [3; 16],
+        port: 10003,
+    };
+    discovery::announce(
+        &sender,
+        (discovery::MULTICAST_GROUP, discovery::MULTICAST_PORT).into(),
+        &a,
+    )
+    .await
+    .unwrap();
+    let (received, source) =
+        tokio::time::timeout(Duration::from_secs(3), discovery::receive(&receiver))
+            .await
+            .expect("multicast loopback delivery")
+            .unwrap();
+    assert_eq!(received, a);
+    assert!(source.ip().is_loopback());
+}
+
+#[tokio::test]
+async fn simultaneous_pairing_is_bounded() {
+    let (_, b) = instance();
+    b.start_pairing().unwrap();
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let mut first = TcpStream::connect(addr).await.unwrap();
+    let eb = b.clone();
+    let socket = listener.accept().await.unwrap().0;
+    let pending = tokio::spawn(async move { pairing::accept(&eb, socket).await });
+    raw_read(&mut first).await;
+    let _second = TcpStream::connect(addr).await.unwrap();
+    assert!(matches!(
+        pairing::accept(&b, listener.accept().await.unwrap().0).await,
+        Err(Error::Busy)
+    ));
+    drop(first);
+    assert!(pending.await.unwrap().is_err());
+}

@@ -121,7 +121,8 @@ pub struct Status {
     pub changes: u64,
 }
 
-/// Pairing window returned to the host. S04 will supply its authenticated flow.
+/// Pairing window returned to the host. Copy its code out of band; never log it.
+/// Complete the authenticated flow with [`pairing::accept`] / [`pairing::connect`].
 pub struct PairingWindow {
     pub code: String,
     pub expires_in_seconds: u64,

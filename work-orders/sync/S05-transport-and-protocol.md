@@ -2,6 +2,8 @@
 
 State: Not started
 
+9 October 2026 handoff: S04 reached a passing localhost boundary, but its follow-up commit and the required `feat/sync-transport` branch write were refused by Git (Permission denied). The owner requires commit-then-branch order; S05 code and measurements have not begun. No TLS, three-instance network convergence, backlog, mid-transfer resume, throughput or catch-up result is claimed. See [the S04 handoff](S04-report.md). S07 remains Not started.
+
 ## Goal
 
 Paired devices open an encrypted connection and exchange the changes each is missing, then keep streaming new ones.
