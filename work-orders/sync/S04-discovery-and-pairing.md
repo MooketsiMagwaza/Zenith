@@ -1,6 +1,6 @@
 # S04 — Discovery, pairing and attempt limits
 
-State: Not started
+State: In progress (S04 library implemented and loopback checks passed, 9 October 2026; real-machine/network acceptance deferred to S07)
 
 ## Goal
 
@@ -19,3 +19,20 @@ Devices on one network find each other and pair once, safely, with no account.
 - Two instances on one machine pair and then recognise each other after a restart. (Run and recorded.)
 - The attacks listed in the threat model each have a test that tries them and fails.
 - Pairing across two real machines on one Wi-Fi works, and one network that blocks mDNS is tried and the result recorded.
+
+## Evidence, 9 October 2026
+
+- `cargo test -p zenith-sync --offline`: 20 passing tests (2 pairing units, 6 S04 integrations, 12 existing S02/S03). The property test still runs 96 cases against both merge libraries. Debug symbols and incremental compilation disabled to limit disk use.
+- SPAKE2 0.4.0 (RustCrypto), asymmetric initiator/acceptor roles. Certificates and fresh 256-bit nonce bind PAKE identities; HKDF binds both messages, certificates and nonce and separates client/server confirmations from discovery secrets. HMAC verification uses the crate's constant-time verification. Public certificates are visible during explicit pairing; no update-log API exists on this endpoint.
+- Generated six-digit code; monotonic 120-second window; explicit cancellation; one concurrent exchange; bounded 9 KiB frames, 10-second frame and 30-second exchange deadlines. Attempts are reserved before any response/crypto, durably in SQLite schema v2; five attempts impose a five-minute lock. New windows and restart do not reset the budget. A unit test advances an injected store timestamp through lock expiry; the production window uses Instant.
+- Two TCP instances on separate localhost ports paired, restarted with the same pins/secrets, recognised rotating tokens, and revoked. Wrong codes, raw transcript replay, role/certificate/nonce/transcript substitution, closed/expired windows, excessive frame lengths, malformed discovery packets and lock persistence were rejected. Unpaired code guesses received no changes; S05 must also reject them at the TLS data endpoint.
+- DNS-SD registered and resolved between two daemons restricted to IPv4 loopback. UDP announcement codec round-tripped on separate localhost ports. A follow-up `cargo test -p zenith-sync --test pairing --offline` passed all 8 S04 integration tests, including actual IPv4 TTL=1 multicast delivery between two sockets on the loopback interface and refusal of a second simultaneous pairing exchange. Total tests now 22 (2 units, 20 integrations). Numeric IPv4/IPv6 manual entry tested without DNS. Clippy with warnings denied, format and whitespace checks passed before these two test additions; final all-target checks follow.
+- Interface change: remove unavailable `finish_pairing(&[u8])`; use `pairing::connect`/`accept`. Host owns listeners, opt-in, address choice and discovery refresh. No UI/QR rendering or app integration; S06 must keep the code private and refresh advertisements on rotation/window close/revocation.
+- RustCrypto explicitly reports no third-party audit: [SPAKE2 README](https://github.com/RustCrypto/PAKEs/blob/master/spake2/README.md). Neither the crate nor this confirmation composition is claimed secure/audited. Clock jumps can affect persisted lock duration and discovery recognition. Network attackers can consume the attempt budget and deny pairing. A lost final confirmation can leave one side pinned; locally revoke and retry.
+- No real devices, blocked-mDNS network, hostile LAN, Windows firewall/ACL audit or CI run. S07 remains Not started. Pins/secrets are generated only at runtime; no key/certificate/secret fixture is committed.
+
+## Git boundary
+
+Local branch `feat/sync-pairing`, saved commit `4a9058c` (`feat: add bounded SPAKE2 pairing and private discovery`). After the green 8-test S04 integration follow-up, Git refused `.git/index.lock` with Permission denied on add/commit. The attempted `feat/sync-transport` ref write also failed. Per the owner's rule, no further Git writes are attempted. The additional multicast/concurrency tests, expanded design text, final evidence and report remain in the working tree. S05 is Not started; no throughput/catch-up measurement exists. Restore Git metadata write access, commit this preserved S04 follow-up, then create the S05 branch from it. No pushes or `gh` actions were run.
+
+Final verification: `cargo test -p zenith-sync --offline` passed all 22 tests again (2 units + 20 integrations, 0 failures/ignored); `cargo clippy -p zenith-sync --all-targets --offline -- -D warnings`, `cargo fmt -p zenith-sync -- --check`, `cargo doc -p zenith-sync --no-deps --offline` and `git diff --check` passed. See [the full handoff report](S04-report.md). No missing crates or registry workarounds were needed.

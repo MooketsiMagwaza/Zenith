@@ -5,8 +5,11 @@
 //! SQLite is the durable source of truth; notifications are hints and can lag.
 //! No network services start merely by opening an [`Engine`].
 
+pub mod discovery;
 pub mod identity;
+pub mod pairing;
 pub mod store;
+mod wire;
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -95,8 +98,18 @@ pub enum Error {
     Unpaired,
     #[error("store mutex poisoned")]
     Poisoned,
-    #[error("pairing is not implemented yet (S04)")]
-    PairingUnavailable,
+    #[error("pairing closed or expired")]
+    PairingClosed,
+    #[error("pairing locked")]
+    PairingLocked,
+    #[error("connection limit")]
+    Busy,
+    #[error("authentication failed")]
+    Authentication,
+    #[error("operation timed out")]
+    Timeout,
+    #[error("discovery: {0}")]
+    Discovery(#[from] mdns_sd::Error),
 }
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -108,8 +121,8 @@ pub struct Status {
     pub changes: u64,
 }
 
-/// Pairing window returned to the host. S04 will supply its authenticated flow.
-#[derive(Debug)]
+/// Pairing window returned to the host. Copy its code out of band; never log it.
+/// Complete the authenticated flow with [`pairing::accept`] / [`pairing::connect`].
 pub struct PairingWindow {
     pub code: String,
     pub expires_in_seconds: u64,
@@ -121,6 +134,8 @@ pub struct Engine {
     identity: Identity,
     store: Mutex<UpdateStore>,
     remote: broadcast::Sender<StoredChange>,
+    pub(crate) pairing: Mutex<Option<pairing::Window>>,
+    pub(crate) pairing_slot: tokio::sync::Semaphore,
 }
 
 impl Engine {
@@ -134,6 +149,8 @@ impl Engine {
             identity,
             store: Mutex::new(store),
             remote,
+            pairing: Mutex::new(None),
+            pairing_slot: tokio::sync::Semaphore::new(1),
         })
     }
     pub fn identity(&self) -> &Identity {
@@ -143,10 +160,21 @@ impl Engine {
         self.store.lock().map_err(|_| Error::Poisoned)?.peers()
     }
     pub fn start_pairing(&self) -> Result<PairingWindow> {
-        Err(Error::PairingUnavailable)
+        self.store
+            .lock()
+            .map_err(|_| Error::Poisoned)?
+            .check_pairing(pairing::unix_seconds()?)?;
+        let window = pairing::Window::new();
+        let result = PairingWindow {
+            code: window.code.clone(),
+            expires_in_seconds: pairing::WINDOW_SECONDS,
+        };
+        *self.pairing.lock().map_err(|_| Error::Poisoned)? = Some(window);
+        Ok(result)
     }
-    pub fn finish_pairing(&self, _response: &[u8]) -> Result<DeviceId> {
-        Err(Error::PairingUnavailable)
+    pub fn close_pairing(&self) -> Result<()> {
+        *self.pairing.lock().map_err(|_| Error::Poisoned)? = None;
+        Ok(())
     }
     /// Revocation is local. Every other device must also revoke a lost peer.
     pub fn revoke_peer(&self, peer: DeviceId) -> Result<()> {
