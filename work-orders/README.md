@@ -40,8 +40,8 @@ Cross-device sync works device to device on the local network, like Syncthing an
 | [S01](sync/S01-design.md) | Design the sync, and settle its open questions | In progress |
 | [S02](sync/S02-engine-skeleton.md) | The engine crate: identity and the update store | Done (merged; 8 offline tests rechecked) |
 | [S03](sync/S03-data-model-and-merge.md) | The data model and the merge library (Automerge or Yjs, by measurement) | In progress (Automerge chosen; spike verified; deployed export/lifecycle open) |
-| [S04](sync/S04-discovery-and-pairing.md) | Discovery, pairing and attempt limits | In progress (22 tests pass; final commit denied by Git; real-network acceptance open) |
-| [S05](sync/S05-transport-and-protocol.md) | Transport and the sync protocol | Not started |
+| [S04](sync/S04-discovery-and-pairing.md) | Discovery, pairing and attempt limits | Done for library (merged; 22 localhost tests; real-network checks deferred to S07) |
+| [S05](sync/S05-transport-and-protocol.md) | Transport and the sync protocol | In progress (localhost transport verified; 36 tests; production validator open; Git/note-path writes denied) |
 | [S06](sync/S06-devices-screen.md) | The Devices screen and sync status | Not started |
 | [S07](sync/S07-cross-device-testing.md) | Testing on real devices and bad networks | Not started |
 | [S08](sync/S08-web-and-mobile-reach.md) | Phones and browsers (later) | Not started |

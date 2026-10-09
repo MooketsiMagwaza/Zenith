@@ -9,6 +9,7 @@ pub mod discovery;
 pub mod identity;
 pub mod pairing;
 pub mod store;
+pub mod transport;
 mod wire;
 
 use serde::{Deserialize, Serialize};
@@ -110,10 +111,16 @@ pub enum Error {
     Timeout,
     #[error("discovery: {0}")]
     Discovery(#[from] mdns_sd::Error),
+    #[error("TLS: {0}")]
+    Tls(#[from] rustls::Error),
+    #[error("unsupported protocol version {0}")]
+    ProtocolVersion(u16),
+    #[error("peer rate limit")]
+    RateLimited,
 }
 pub type Result<T> = std::result::Result<T, Error>;
 
-/// Status snapshot. Counts are durable; the network lifecycle arrives in S05.
+/// Durable counts. The host owns transport task lifecycle and error reporting.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Status {
     pub device_id: DeviceId,
@@ -136,6 +143,8 @@ pub struct Engine {
     remote: broadcast::Sender<StoredChange>,
     pub(crate) pairing: Mutex<Option<pairing::Window>>,
     pub(crate) pairing_slot: tokio::sync::Semaphore,
+    pub(crate) transport_slots: tokio::sync::Semaphore,
+    pub(crate) transport_peers: Mutex<std::collections::BTreeMap<DeviceId, transport::PeerBudget>>,
 }
 
 impl Engine {
@@ -151,6 +160,8 @@ impl Engine {
             remote,
             pairing: Mutex::new(None),
             pairing_slot: tokio::sync::Semaphore::new(1),
+            transport_slots: tokio::sync::Semaphore::new(transport::MAX_CONNECTIONS),
+            transport_peers: Mutex::new(std::collections::BTreeMap::new()),
         })
     }
     pub fn identity(&self) -> &Identity {
