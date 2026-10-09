@@ -1,6 +1,6 @@
 # Cross-device sync
 
-Status: 8 October 2026. S02 is merged. S03 has runnable merge, migration and compatibility spikes; the decision and remaining acceptance checks are below. Pairing and transport are not implemented; opening the engine starts no network activity. Owner: Mooketsi Vincent Magwaza, sole founder. Owner decisions remain open. This replaces the hosted sync API with accounts that an earlier plan (X01) described.
+Status: 9 October 2026. S02 and the S03 measurement work are merged; S03 migration/lifecycle limits below remain open. S04 implements opt-in discovery and SPAKE2 pairing, tested on loopback. S05 transport follows on a stacked branch. Opening the engine starts no network activity. Owner: Mooketsi Vincent Magwaza, sole founder. Owner decisions remain open. This replaces the hosted sync API with accounts that an earlier plan (X01) described.
 
 ## The idea
 
@@ -88,7 +88,7 @@ Documents are split into a catalog, monthly session-log shards and one document 
 
 The risk is another person or device on the same Wi-Fi, such as a café or a shared house.
 
-This table describes required protections. Pairing/transport are not implemented yet; it is not evidence that the current crate defends an exposed LAN endpoint.
+This table describes required protections. The S04 evidence below covers pairing and discovery on loopback; TLS and the data endpoint still require S05. It is not evidence of security on a hostile LAN.
 
 | Threat | Answer |
 | --- | --- |
@@ -114,7 +114,7 @@ See [`work-orders/sync`](../work-orders/sync): S01 to S09.
 
 `Engine::open(app_private_directory)` creates or loads a P-256 key and rcgen self-signed certificate in one versioned `identity.bin`, and opens `updates.sqlite`. The full device ID is SHA-256 of DER SubjectPublicKeyInfo. Corrupt, oversized, newer, or mismatched identity material fails closed rather than silently changing identity. A first-write crash requires explicit host recovery. The host must ensure one engine/process owns a directory. Unix creation uses mode 0600; Windows inherits the supplied directory ACL, which has not been audited. Keys and SQLite are not encrypted at rest.
 
-The public Rust interface covers identity, listing/revoking peers, local changes, remote subscriptions, durable catch-up and status. `start_pairing`/`finish_pairing` currently return an explicit S04-unavailable error. `UpdateStore::pin` and `Engine::receive_remote_change` are trusted-host APIs, not authentication endpoints: a supplied peer ID alone proves nothing. S04/S05 must enforce pairing and TLS before calling them.
+The public Rust interface covers identity, listing/revoking peers, local changes, remote subscriptions, durable catch-up and status. S04 replaces the unavailable `finish_pairing` placeholder with asynchronous `pairing::accept` and `pairing::connect`; `start_pairing` opens a window and `close_pairing` cancels it. `UpdateStore::pin` and `Engine::receive_remote_change` remain trusted-host APIs, not authentication endpoints: a supplied peer ID alone proves nothing. S05 must enforce TLS before calling receive.
 
 Change envelope v1 has a version, SHA-256 content ID and 1–262,144 opaque payload bytes. The digest covers a domain separator, version and payload. The application must put document ID and operation identity inside the payload. Envelope validation checks version, length and digest; it cannot validate app/CRDT semantics. De-duplication is global by content ID. SQLite uses WAL and FULL synchronous writes; sequence numbers order local ingestion only. A peer cursor refers to this sender's log, advances monotonically only within its durable head, and must advance only after a remote durable acknowledgement. Received changes are kept for forwarding to other peers. No compaction or log quota exists yet.
 
@@ -122,13 +122,13 @@ Remote broadcast notifications are bounded hints (128 entries). A lagging subscr
 
 ### Outstanding engineering risks
 
-- Pairing and TLS are still design requirements, not implemented protections. The host must not expose pin/receive methods to untrusted input. Certificate possession must be verified in TLS as well as matching the stored pin.
-- Rotating discovery tokens need a specified shared-secret recognition scheme; certificates and device IDs are public, so they cannot supply that secret. Token rotation alone does not hide IP addresses, ports, timing or stable mDNS hostnames. The discovery privacy goal is limiting advertised identity, not network anonymity.
+- S04 pairing has passing adversarial loopback tests; TLS remains for S05. The host must not expose pin/receive methods to untrusted input. Certificate possession must be verified in TLS as well as matching the stored pin.
+- Discovery uses a separate per-pair HKDF secret, directional truncated HMAC-SHA256 tokens and rotating mDNS host/instance names. Rotation does not hide IP addresses, ports, timing, number of peers or associations between simultaneous advertisements. Discovery is a hint, not authentication or network anonymity.
 - Per-peer cursors are sender-local durable acknowledgements, not CRDT version vectors. S05 must specify resume and acknowledgement ordering and test mid-transfer failures before advancing them.
 - The append-only log has no retention bound or compaction mechanism yet. S03 must measure growth and preserve causality/tombstones when deciding compaction. Application validation, memory limits and quotas still need design work for hostile paired peers.
 - S03 verified synthetic merge convergence and JS/Rust interoperability and measured library costs. Real exported-data migration, transport throughput and real-device/network behaviour remain unverified. There is no production CRDT shape/resource validator yet.
 
-S02 is merged (f77ff76). Work continues in the standalone `zenith-codex-sync` clone on `feat/sync-merge-model`; the earlier linked-worktree Git blocker is resolved. All checks use offline caches/installed JS dependencies, without registry overrides or network workarounds. S03 remains in progress until an actual deployed export is checked and the migration/document lifecycle is ready for host integration. S04/S05 and S07 are not started. Nothing here claims that the engine is secure or ready to sync user data.
+S02 is merged (f77ff76), and S03's measurement work is merged (2dbdc4e). Work continues in the standalone `zenith-codex-sync` clone on `feat/sync-pairing`; the earlier linked-worktree Git blocker is resolved. All checks use offline caches, without registry overrides or network workarounds. S03's actual deployed export and migration/document lifecycle checks remain open. S04 is implemented on loopback, S05 follows, and S07 is not started. Nothing here claims that the engine is secure or ready to sync user data.
 
 ## Decisions (S03, 8 October 2026)
 
