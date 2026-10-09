@@ -2,6 +2,7 @@
   "name": "@zenith/app",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "description": "Zenith: the full app, as a web interface and as a Tauri 2 desktop app.",
   "sideEffects": false,
   "type": "module",

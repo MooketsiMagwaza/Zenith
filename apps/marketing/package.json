@@ -2,6 +2,7 @@
   "name": "@zenith/marketing",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "The Zenith marketing site: static pages written in React, built with Vite and Tailwind, with no script and no tracking.",
   "scripts": {
