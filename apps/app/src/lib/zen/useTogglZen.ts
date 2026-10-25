@@ -66,6 +66,7 @@ export function useTogglZen() {
   const [journals, setJournals] = useState<Journal[]>([]);
   const [active, setActive] = useState<ActiveTask>({ taskIds: [], deckIds: [], startedAt: null });
   const [tick, setTick] = useState(0);
+  const [completion, setCompletion] = useState<{logs: Log[]; before: Deck[]} | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // hydrate
@@ -141,22 +142,24 @@ export function useTogglZen() {
     const log: Log = { id: generateId(), taskId, taskName: task.name, deckName: deck.name, deckColor: deck.color, duration: dur, startedAt, endedAt, hasJournal: false };
     setLogs(prev => [log, ...prev]);
     setDecks(prev => prev.map(d => d.id !== deck.id ? d : { ...d, tasks: d.tasks.map(t => t.id !== taskId ? t : { ...t, totalSeconds: t.totalSeconds + dur }) }));
+    return log;
   };
 
   const stopTask = useCallback((endedAt = Date.now()) => {
     const current = activeRef.current;
     if (current.startedAt === null || !current.taskIds.length) return;
     const dur = Math.max(0, Math.floor((endedAt - current.startedAt) / 1000));
-    current.taskIds.forEach((tid, i) => commitStop(tid, current.deckIds[i] ?? null, current.startedAt!, dur, endedAt));
+    const completed = current.taskIds.map((tid, i) => commitStop(tid, current.deckIds[i] ?? null, current.startedAt!, dur, endedAt)).filter((l): l is Log => !!l);
+    if (completed.length) setCompletion({logs: completed, before: decksRef.current});
     const empty = { taskIds: [], deckIds: [], startedAt: null };
     activeRef.current = empty;
     setActive(empty);
   }, []);
 
-  const startTasks = useCallback((tasks: Task[]) => {
+  const startTasks = useCallback((tasks: Task[], startedAt = Date.now()) => {
     if (!tasks.length) return;
     stopTask();
-    const next = { taskIds: tasks.map(t => t.id), deckIds: tasks.map(t => t.deckId), startedAt: Date.now() };
+    const next = { taskIds: tasks.map(t => t.id), deckIds: tasks.map(t => t.deckId), startedAt };
     activeRef.current = next;
     setActive(next);
   }, [stopTask]);
@@ -386,6 +389,7 @@ export function useTogglZen() {
     journals,
     active,
     elapsed,
+    completion,
     startTask,
     startTasks,
     stopTask,

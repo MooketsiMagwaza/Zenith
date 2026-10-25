@@ -4,11 +4,13 @@
  * Persistence is in `persistence.ts`; the page and the window shell talk to this through `index.ts`.
  */
 
-import { produce } from "immer";
-import type { AgentState, Command, Reminder } from "../shared/types";
-import { generateId } from "../shared/utils";
-import { DEFAULT_STATE } from "../shared/constants";
-import { loadState, saveState } from "./persistence";
+import { produce } from 'immer';
+import type { AgentState, Command, Reminder } from '../shared/types';
+import { generateId } from '../shared/utils';
+import { DEFAULT_STATE } from '../shared/constants';
+import { loadState, saveState } from './persistence';
+import { migratePopupState } from '../shared/migration';
+import { PetSchema, petPhrase } from '../shared/pet';
 
 type Listener = (state: AgentState) => void;
 type ReminderListener = (reminder: Reminder) => void;
@@ -23,12 +25,22 @@ export class AgentStore {
   private onReminder: ReminderListener = () => {};
   private poller: ReturnType<typeof setInterval> | null = null;
   private ready: Promise<void> | null = null;
+  private unreadablePet: unknown = undefined;
+  private initialized = false;
+  private hasReminderHandler = false;
+  constructor(
+    private persistence = { load: loadState, save: saveState },
+    private now: () => number = Date.now,
+  ) {}
 
   init(): Promise<void> {
     this.ready ??= (async () => {
-      const saved = await loadState();
-      this.state = { ...DEFAULT_STATE, ...(saved ?? {}), version: 0 };
-      this.startReminderPoller();
+      const saved = await this.persistence.load();
+      const migrated = migratePopupState(saved);
+      this.state = { ...migrated.state, version: 0 };
+      this.unreadablePet = migrated.unreadablePet;
+      this.initialized = true;
+      if (this.hasReminderHandler) this.startReminderPoller();
     })();
     return this.ready;
   }
@@ -44,6 +56,13 @@ export class AgentStore {
 
   setReminderHandler(fn: ReminderListener): void {
     this.onReminder = fn;
+    this.hasReminderHandler = true;
+    if (this.initialized) this.startReminderPoller();
+  }
+  dispose(): void {
+    if (this.poller) clearInterval(this.poller);
+    this.poller = null;
+    this.listeners.clear();
   }
 
   private update(recipe: (draft: AgentState) => void): void {
@@ -51,48 +70,110 @@ export class AgentStore {
       recipe(draft);
       draft.version++;
     });
-    saveState(this.state);
+    const { petReadOnly, ...saved } = this.state;
+    this.persistence.save(
+      (petReadOnly ? { ...saved, pet: this.unreadablePet } : saved) as AgentState,
+    );
     for (const fn of this.listeners) fn(this.state);
   }
 
   handleCommand(cmd: Command): void {
     switch (cmd.type) {
-      case "START_SESSION": return this.startSession(cmd.taskIds);
-      case "STOP_SESSION": return this.stopSession();
-      case "ADD_DECK": return this.addDeck(cmd.name, cmd.color);
-      case "ADD_TASK": return this.addTask(cmd.deckId, cmd.name, cmd.tag, cmd.mode, cmd.targetSeconds);
-      case "DELETE_DECK": return this.deleteDeck(cmd.id);
-      case "DELETE_TASK": return this.deleteTask(cmd.id);
-      case "UPSERT_JOURNAL": return this.upsertJournal(cmd.content, cmd.targetId, cmd.targetType);
-      case "TOGGLE_CHECKLIST": return this.toggleChecklist(cmd.taskId, cmd.itemId);
-      case "ADD_CHECKLIST_ITEM": return this.addChecklistItem(cmd.taskId, cmd.text);
-      case "ADD_REMINDER": return this.addReminder(cmd.reminder);
-      case "REMOVE_REMINDER": return this.removeReminder(cmd.id);
-      case "SET_TUTORIAL_SEEN": return this.update((d) => { d.tutorialSeen = cmd.seen; });
-      case "SET_ZEN_PREFS":
-        return this.update((d) => { d.zenPack = cmd.pack; d.zenInterval = cmd.interval; d.zenWallpaper = cmd.wallpaper; });
+      case 'SET_PET_PREFS': {
+        if (this.state.petReadOnly) return;
+        const parsed = PetSchema.safeParse({ ...this.state.pet, ...cmd.patch });
+        if (parsed.success)
+          this.update((d) => {
+            d.pet = parsed.data;
+          });
+        return;
+      }
+      case 'PET_INTERACTION':
+        if (!this.state.pet.enabled || this.state.petReadOnly) return;
+        return this.update((d) => {
+          if (cmd.kind === 'open') d.pet.interactions.opens++;
+          else d.pet.interactions.drags++;
+        });
+      case 'START_BREAK':
+        if (
+          !this.state.pet.enabled ||
+          this.state.petReadOnly ||
+          !Number.isInteger(cmd.minutes) ||
+          cmd.minutes < 1 ||
+          cmd.minutes > 120
+        )
+          return;
+        this.stopSession();
+        return this.update((d) => {
+          d.pet.breakUntil = this.now() + cmd.minutes * 60000;
+          d.pet.celebrateUntil = null;
+        });
+      case 'END_BREAK':
+        if (this.state.petReadOnly) return;
+        return this.update((d) => {
+          d.pet.breakUntil = null;
+        });
+      case 'START_SESSION':
+        return this.startSession(cmd.taskIds);
+      case 'STOP_SESSION':
+        return this.stopSession();
+      case 'ADD_DECK':
+        return this.addDeck(cmd.name, cmd.color);
+      case 'ADD_TASK':
+        return this.addTask(cmd.deckId, cmd.name, cmd.tag, cmd.mode, cmd.targetSeconds);
+      case 'DELETE_DECK':
+        return this.deleteDeck(cmd.id);
+      case 'DELETE_TASK':
+        return this.deleteTask(cmd.id);
+      case 'UPSERT_JOURNAL':
+        return this.upsertJournal(cmd.content, cmd.targetId, cmd.targetType);
+      case 'TOGGLE_CHECKLIST':
+        return this.toggleChecklist(cmd.taskId, cmd.itemId);
+      case 'ADD_CHECKLIST_ITEM':
+        return this.addChecklistItem(cmd.taskId, cmd.text);
+      case 'ADD_REMINDER':
+        return this.addReminder(cmd.reminder);
+      case 'REMOVE_REMINDER':
+        return this.removeReminder(cmd.id);
+      case 'SET_TUTORIAL_SEEN':
+        return this.update((d) => {
+          d.tutorialSeen = cmd.seen;
+        });
+      case 'SET_ZEN_PREFS':
+        return this.update((d) => {
+          d.zenPack = cmd.pack;
+          d.zenInterval = cmd.interval;
+          d.zenWallpaper = cmd.wallpaper;
+        });
     }
   }
 
   private startSession(taskIds: string[]): void {
     this.update((d) => {
-      if (d.active?.startedAt && d.active.taskIds.length) this.commitSession(d, d.active);
-      const deckIds = taskIds.map((id) => d.tasks.find((t) => t.id === id)?.deckId || "");
-      d.active = { taskIds, deckIds, startedAt: Date.now() };
+      if (d.active?.startedAt != null && d.active.taskIds.length) this.commitSession(d, d.active);
+      const deckIds = taskIds.map((id) => d.tasks.find((t) => t.id === id)?.deckId || '');
+      d.active = { taskIds, deckIds, startedAt: this.now() };
+      d.pet.breakUntil = null;
+      d.pet.celebrateUntil = null;
     });
   }
 
   private stopSession(): void {
     this.update((d) => {
-      if (d.active?.startedAt && d.active.taskIds.length) this.commitSession(d, d.active);
+      const hadTime =
+        d.active?.startedAt != null &&
+        d.active.taskIds.length > 0 &&
+        this.now() - d.active.startedAt >= 1000;
+      if (d.active?.startedAt != null && d.active.taskIds.length) this.commitSession(d, d.active);
+      if (hadTime && d.pet.enabled && d.pet.celebrations) d.pet.celebrateUntil = this.now() + 8000;
       d.active = null;
     });
   }
 
   /** Adds the elapsed time to each task in the session and writes one log line per task. */
-  private commitSession(draft: AgentState, active: NonNullable<AgentState["active"]>): void {
+  private commitSession(draft: AgentState, active: NonNullable<AgentState['active']>): void {
     const startedAt = active.startedAt!;
-    const duration = Math.floor((Date.now() - startedAt) / 1000);
+    const duration = Math.floor((this.now() - startedAt) / 1000);
     if (duration < 1) return;
     for (const taskId of active.taskIds) {
       const task = draft.tasks.find((t) => t.id === taskId);
@@ -103,25 +184,39 @@ export class AgentStore {
         id: generateId(),
         taskId,
         taskName: task.name,
-        deckName: deck?.name || "",
-        deckColor: deck?.color || "#c9a84c",
+        deckName: deck?.name || '',
+        deckColor: deck?.color || '#c9a84c',
         duration,
         startedAt,
-        endedAt: Date.now(),
+        endedAt: this.now(),
         hasJournal: false,
       });
     }
   }
 
   private addDeck(name: string, color: string): void {
-    this.update((d) => { d.decks.push({ id: generateId(), name, color, createdAt: Date.now() }); });
+    this.update((d) => {
+      d.decks.push({ id: generateId(), name, color, createdAt: this.now() });
+    });
   }
 
-  private addTask(deckId: string, name: string, tag?: string, mode?: "stopwatch" | "countdown", targetSeconds?: number): void {
+  private addTask(
+    deckId: string,
+    name: string,
+    tag?: string,
+    mode?: 'stopwatch' | 'countdown',
+    targetSeconds?: number,
+  ): void {
     this.update((d) => {
       d.tasks.push({
-        id: generateId(), deckId, name, tag: tag || "", totalSeconds: 0, createdAt: Date.now(), mode,
-        targetSeconds: mode === "countdown" ? targetSeconds ?? 1500 : undefined,
+        id: generateId(),
+        deckId,
+        name,
+        tag: tag || '',
+        totalSeconds: 0,
+        createdAt: this.now(),
+        mode,
+        targetSeconds: mode === 'countdown' ? (targetSeconds ?? 1500) : undefined,
       });
     });
   }
@@ -130,11 +225,15 @@ export class AgentStore {
     this.update((d) => {
       const taskIds = d.tasks.filter((t) => t.deckId === id).map((t) => t.id);
       d.reminders = d.reminders.filter(
-        (r) => !(r.targetType === "deck" && r.targetId === id) && !(r.targetType === "task" && taskIds.includes(r.targetId)),
+        (r) =>
+          !(r.targetType === 'deck' && r.targetId === id) &&
+          !(r.targetType === 'task' && taskIds.includes(r.targetId)),
       );
       d.decks = d.decks.filter((dd) => dd.id !== id);
       d.tasks = d.tasks.filter((t) => t.deckId !== id);
-      d.journals = d.journals.filter((j) => j.deckId !== id && (!j.taskId || !taskIds.includes(j.taskId)));
+      d.journals = d.journals.filter(
+        (j) => j.deckId !== id && (!j.taskId || !taskIds.includes(j.taskId)),
+      );
       if (d.active) {
         d.active.taskIds = d.active.taskIds.filter((tid) => !taskIds.includes(tid));
         d.active.deckIds = d.active.deckIds.filter((did) => did !== id);
@@ -148,7 +247,7 @@ export class AgentStore {
       d.tasks = d.tasks.filter((t) => t.id !== id);
       d.journals = d.journals.filter((j) => j.taskId !== id);
       // The prototype kept only *task* reminders here, which silently dropped every deck reminder.
-      d.reminders = d.reminders.filter((r) => !(r.targetType === "task" && r.targetId === id));
+      d.reminders = d.reminders.filter((r) => !(r.targetType === 'task' && r.targetId === id));
       const index = d.active?.taskIds.indexOf(id) ?? -1;
       if (d.active && index !== -1) {
         d.active.taskIds.splice(index, 1);
@@ -158,14 +257,21 @@ export class AgentStore {
     });
   }
 
-  private upsertJournal(content: string, targetId: string, targetType: "task" | "deck"): void {
+  private upsertJournal(content: string, targetId: string, targetType: 'task' | 'deck'): void {
     this.update((d) => {
-      const existing = d.journals.find((j) => (targetType === "task" ? j.taskId === targetId : j.deckId === targetId));
+      const existing = d.journals.find((j) =>
+        targetType === 'task' ? j.taskId === targetId : j.deckId === targetId,
+      );
       if (existing) {
         existing.content = content;
-        existing.updatedAt = Date.now();
+        existing.updatedAt = this.now();
       } else {
-        d.journals.push({ id: generateId(), [targetType === "task" ? "taskId" : "deckId"]: targetId, content, updatedAt: Date.now() });
+        d.journals.push({
+          id: generateId(),
+          [targetType === 'task' ? 'taskId' : 'deckId']: targetId,
+          content,
+          updatedAt: this.now(),
+        });
       }
     });
   }
@@ -185,41 +291,69 @@ export class AgentStore {
     });
   }
 
-  private addReminder(reminder: Omit<Reminder, "id" | "lastFiredAt" | "createdAt">): void {
-    this.update((d) => { d.reminders.push({ ...reminder, id: generateId(), createdAt: Date.now(), lastFiredAt: undefined }); });
+  private addReminder(reminder: Omit<Reminder, 'id' | 'lastFiredAt' | 'createdAt'>): void {
+    this.update((d) => {
+      d.reminders.push({
+        ...reminder,
+        id: generateId(),
+        createdAt: this.now(),
+        lastFiredAt: undefined,
+      });
+    });
   }
 
   private removeReminder(id: string): void {
-    this.update((d) => { d.reminders = d.reminders.filter((r) => r.id !== id); });
+    this.update((d) => {
+      d.reminders = d.reminders.filter((r) => r.id !== id);
+    });
   }
 
   /** True when `r` should fire at `now`. A one-off fires once it is due; a repeat fires in the minute after its time of day. */
   static isDue(r: Reminder, now: number): boolean {
     if (!r.enabled) return false;
-    if (r.repeat === "none") return r.fireAt <= now && (!r.lastFiredAt || r.lastFiredAt < r.fireAt);
+    const last = r.lastFiredAt ?? -Infinity;
+    if (r.repeat === 'none') return r.fireAt <= now && last < r.fireAt;
     const base = new Date(r.fireAt);
     const today = new Date(now);
     today.setHours(base.getHours(), base.getMinutes(), 0, 0);
     const trigger = today.getTime();
+    const first = new Date(r.fireAt);
+    first.setSeconds(0, 0);
     const day = today.getDay();
     const dayOk =
-      r.repeat === "daily" ||
-      (r.repeat === "weekdays" && day >= 1 && day <= 5) ||
-      (r.repeat === "weekly" && day === (r.weekday ?? base.getDay()));
-    return dayOk && trigger <= now && now - trigger < GRACE_MS && (!r.lastFiredAt || r.lastFiredAt < trigger);
+      r.repeat === 'daily' ||
+      (r.repeat === 'weekdays' && day >= 1 && day <= 5) ||
+      (r.repeat === 'weekly' && day === (r.weekday ?? base.getDay()));
+    return (
+      dayOk &&
+      trigger >= first.getTime() &&
+      trigger <= now &&
+      now - trigger < GRACE_MS &&
+      last < trigger
+    );
   }
 
   private startReminderPoller(): void {
     if (this.poller) clearInterval(this.poller);
     const check = () => {
-      const now = Date.now();
+      const now = this.now();
       const due = this.state.reminders.filter((r) => AgentStore.isDue(r, now));
       if (!due.length) return;
       this.update((d) => {
         for (const r of d.reminders) {
           if (!due.some((x) => x.id === r.id)) continue;
           r.lastFiredAt = now;
-          if (r.repeat === "none") r.enabled = false;
+          if (d.pet.enabled && d.pet.messages && d.pet.nudges && !d.petReadOnly) {
+            const task = d.tasks.find((t) => r.targetType === 'task' && t.id === r.targetId);
+            const deck = d.decks.find((x) => r.targetType === 'deck' && x.id === r.targetId);
+            d.pet.lastMessage = petPhrase(
+              task?.name ?? deck?.name ?? r.label,
+              task?.id,
+              d.pet,
+            ).slice(0, 10000);
+            d.pet.nudgeUntil = now + 12000;
+          }
+          if (r.repeat === 'none') r.enabled = false;
         }
       });
       for (const r of due) this.onReminder(r);

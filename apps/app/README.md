@@ -39,7 +39,7 @@ Modern productivity apps optimize for **capture** (todo lists) or for **billing*
 2. **Run a session.** Stopwatch or countdown. One card or several at once. A sticky bottom timer never leaves you.
 3. **Reflect.** Every card and every deck gets exactly one markdown journal with autosave. One target, one document, no fragmentation.
 
-Zen mode and the rotating quote packs exist to **remove decoration** — when you're working, the screen should look like the inside of your head when you're calm. There are no streaks, no XP bars, no nags, no popups asking you to upgrade. The only reward is the time you put in.
+Zen mode and the rotating quote packs exist to **remove decoration** — when you're working, the screen should look like the inside of your head when you're calm. The default stays quiet: companion messages, progress bars, completion recaps, affirmations and milestones are optional and off until enabled. There are no streak penalties or upgrade popups.
 
 ### Design goals (the rules everything is built against)
 
@@ -694,6 +694,13 @@ What Zenith is deliberately not, and won't become:
 - **A team tool.** No multi-user, no shared decks. Single-user and local-first. Today each device keeps its own data; sync between your own devices, directly over the local network with no account, is planned ([`docs/SYNC.md`](../../docs/SYNC.md)) and not built.
 - **A billing tool.** No invoicing, no client rates, no exports tuned for accounting.
 - **A todo app.** The checklist on a card is incidental — the unit of work is the card itself.
-- **Gamified.** No streaks, no XP, no nags. There's a card, a timer, and a blank page. Put the time in. Write what happened. Come back tomorrow.
+- **Pressure to perform.** Progress, companion messages, rewards and affirmations are optional. The default is a card, a timer and a blank page, with no streak penalties or loss messages.
 
 > "Today is victory over yourself of yesterday." — Musashi
+
+
+## Optional companion, rewards, Pomodoro, calendar and open data
+
+Companion messages, goal progress, session recaps, editable affirmations, milestones and Pomodoro are optional and default off. Configure companion kinds/phrases and completion switches in Companion; use Pomodoro for 25/5, 50/10 or custom focus/break cycles. Ctrl/Command + Alt + P opens it or starts a waiting phase. A long break follows four focus blocks. Completion screens make the next phase wait for you even with auto-start enabled. Calendar shows month/week sessions, enabled reminders and goal progress for a selected date, with iCalendar export.
+
+The Data view explains that your data is yours, exports full JSON, time-entry CSV, Markdown journal bundles and iCalendar, and previews local imports including supported Toggl/Clockify detailed CSV. Full JSON replaces data after a backup download; the other formats merge. See [DATA_FORMAT.md](../../docs/DATA_FORMAT.md) for schemas, units, migrations and limits. New settings extend `zenith.features.v1` additively; cycles use `zenith.pomodoro.v1`. Existing keys remain readable. No network calls were added. These controls have TypeScript, fallback test and source-bundle evidence; real browser and desktop validation is still required.

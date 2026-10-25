@@ -1,4 +1,11 @@
 import { useFeatures } from "@/lib/zen/useFeatures";
+import { companionMessage } from '@/lib/zen/companion';
+import { CompanionView } from './CompanionView';
+import { CompletionScreen } from './Rewards';
+import { usePomodoro } from '@/lib/zen/usePomodoro';
+import { PomodoroView } from './PomodoroView';
+import { CalendarView } from './CalendarView';
+import { DataView } from './DataView';
 import { ProgressView, GoalBar, type FeatureStore } from "./ProgressView";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { appWindow, storage } from "@/lib/platform";
@@ -43,7 +50,17 @@ const ALL_BUILTIN_WALLPAPERS: WallpaperItem[] = Object.values(WALLPAPER_CATEGORI
 export function TogglZenApp() {
   const z = useTogglZen();
   const features = useFeatures();
+  const [importing,setImporting]=useState(false);
+  const pomodoro = usePomodoro(z,features);
   const [view, setView] = useState<ViewName>("decks");
+  useEffect(() => {
+    const onKey=(e:KeyboardEvent) => {
+      if(!importing && (e.ctrlKey || e.metaKey) && e.altKey && e.code==='KeyP' && !(e.target instanceof HTMLElement && (e.target.matches('input,textarea,select') || e.target.isContentEditable))) {
+        e.preventDefault(); setView('pomodoro'); if(pomodoro.value?.startedAt===null) pomodoro.next();
+      }
+    };
+    window.addEventListener('keydown',onKey); return () => window.removeEventListener('keydown',onKey);
+  },[pomodoro.value,features.value.pomodoro,importing]);
   const [activeDeckId, setActiveDeckId] = useState<string | null>(null);
   const [focusOpen, setFocusOpen] = useState(false);
   const [zenOpen, setZenOpen] = useState(false);
@@ -73,7 +90,9 @@ export function TogglZenApp() {
       setTimeout(() => {
         const el = document.getElementById(`zen-card-${r.targetId}`);
         if (el) {
-          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "center" });
+          el.setAttribute("tabindex", "-1");
+          el.focus({preventScroll:true});
           el.classList.add("ring-2", "ring-accent-gold");
           setTimeout(() => el.classList.remove("ring-2", "ring-accent-gold"), 2000);
         }
@@ -82,6 +101,9 @@ export function TogglZenApp() {
   };
 
   const reminders = useReminders((r: Reminder) => {
+    const card = z.decks.flatMap(d => d.tasks).find(t => r.targetType === 'task' && t.id === r.targetId);
+    const deck = z.decks.find(d => r.targetType === 'deck' && d.id === r.targetId);
+    const phrase = features.value.companion.enabled ? companionMessage(card?.name ?? deck?.name ?? r.label, card?.id, features.value) : undefined;
     const title =
       r.targetType === "deck"
         ? `Deck: ${r.label}`
@@ -89,13 +111,13 @@ export function TogglZenApp() {
           ? `${r.deckName} — ${r.label}`
           : r.label;
     notify.info("Reminder", {
-      description: title,
+      description: phrase ?? title,
       duration: 10000,
       action: { label: "Open", onClick: () => openReminderTarget(r) },
     });
     if (r.sound) fireChime();
-    if (r.notify) fireBrowserNotification(r, () => openReminderTarget(r));
-  });
+    if (r.notify) fireBrowserNotification(r, () => openReminderTarget(r), phrase);
+  },importing);
 
 
   // Prune reminders pointing at deleted decks/cards
@@ -157,7 +179,7 @@ export function TogglZenApp() {
     : null;
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <><div className="min-h-screen bg-background text-foreground" inert={importing}>
       <Nav
         view={view}
         setView={setView}
@@ -192,6 +214,13 @@ export function TogglZenApp() {
         )}
 
         {view === "progress" && <ProgressView z={z} features={features} />}
+        {view === "companion" && <CompanionView z={z} features={features} />}
+        {view === "data" && <DataView canImport={z.active.startedAt===null && !pomodoro.value} onApplying={setImporting} />}
+        {view === "pomodoro" && <PomodoroView z={z} features={features} p={pomodoro} />}
+        {view === "calendar" && <CalendarView z={z} features={features} reminders={reminders.reminders} openTarget={(type,id) => {
+          const r=reminders.reminders.find(r => r.targetType===type && r.targetId===id);
+          openReminderTarget(r ?? {targetType:type,targetId:id} as Reminder);
+        }} />}
         {view === "journal" && (
           <JournalView z={z} context={journalContext} clearContext={() => setJournalContext(null)} />
         )}
@@ -253,6 +282,7 @@ export function TogglZenApp() {
       )}
 
       {tutorialOpen && <Tutorial onClose={() => setTutorialOpen(false)} />}
+      <CompletionScreen z={z} features={features} />
 
       {remindersOpen && (
         <RemindersModal
@@ -265,7 +295,7 @@ export function TogglZenApp() {
           onToggle={reminders.toggleReminder}
         />
       )}
-    </div>
+    </div>{importing && <div className="import-overlay" role="status">Saving your import. This may take a moment.</div>}</>
   );
 }
 
@@ -303,7 +333,7 @@ function Nav({
     appWindow.toggleFullscreen().catch(() => {});
   };
 
-  const tabs: ViewName[] = ["decks", "journal", "history", "progress"];
+  const tabs: ViewName[] = ["decks", "journal", "history", "progress", "companion", "pomodoro", "calendar", "data"];
   return (
     <nav className="sticky top-0 z-30 bg-background/85 backdrop-blur">
       <div className="pointer-events-none absolute inset-x-6 bottom-0 h-px bg-gradient-to-r from-transparent via-border to-transparent" />

@@ -39,3 +39,6 @@ ops/data/
 *.pyc
 __pycache__/
 .venv/
+
+# Local sandbox verification and commit handoff notes
+.verification/

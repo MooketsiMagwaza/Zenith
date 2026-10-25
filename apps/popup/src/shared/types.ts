@@ -1,4 +1,5 @@
 export type TimerMode = 'stopwatch' | 'countdown'
+import type { PetState, PetPreferences } from './pet';
 export type ChecklistItem = { id: string; text: string; done: boolean }
 export type Deck = { id: string; name: string; color: string; createdAt: number }
 export type Task = {
@@ -29,8 +30,15 @@ export type AgentState = {
   version: number; decks: Deck[]; tasks: Task[]; logs: Log[];
   journals: Journal[]; active: ActiveTask; reminders: Reminder[];
   tutorialSeen: boolean; zenPack: string; zenInterval: number; zenWallpaper: string;
+  pet: PetState;
+  /** Transient flag; the original unreadable record is preserved by the store. */
+  petReadOnly?: boolean;
 }
 export type Command =
+  | { type: 'SET_PET_PREFS'; patch: Partial<PetPreferences> }
+  | { type: 'PET_INTERACTION'; kind: 'open' | 'drag' }
+  | { type: 'START_BREAK'; minutes: number }
+  | { type: 'END_BREAK' }
   | { type: 'START_SESSION'; taskIds: string[] }
   | { type: 'STOP_SESSION' }
   | { type: 'ADD_DECK'; name: string; color: string }

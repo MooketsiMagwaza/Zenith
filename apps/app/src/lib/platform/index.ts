@@ -7,8 +7,8 @@
  * - Desktop: `storage` is a JSON file in the app's data folder (the Tauri store plugin), read
  *   once at start-up so reads stay synchronous; `appWindow` makes the native window fullscreen.
  *
- * Notifications need nothing here: the shell's notification plugin implements the Web
- * `Notification` API, so the reminder code is the same on both.
+ * Reminder notifications use the native plugin on desktop and the Web Notification API in
+ * browsers; the lazy native import lives in `zen/useReminders.ts`.
  */
 
 export const isTauri = (): boolean =>
@@ -19,6 +19,8 @@ export interface KeyValueStorage {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
   removeItem(key: string): void;
+  entries(): [string,string][];
+  flush?(): Promise<void>;
 }
 
 /** The window calls the app makes. */
@@ -34,6 +36,7 @@ const browserStorage: KeyValueStorage = {
   getItem: (key) => window.localStorage.getItem(key),
   setItem: (key, value) => window.localStorage.setItem(key, value),
   removeItem: (key) => window.localStorage.removeItem(key),
+  entries: () => Array.from({length:window.localStorage.length},(_,i) => window.localStorage.key(i)).filter((k):k is string => k!==null).map(k => [k,window.localStorage.getItem(k)!]),
 };
 
 const browserWindow: AppWindow = {
@@ -55,6 +58,7 @@ type StoreHandle = {
   entries<T>(): Promise<[string, T][]>;
   set(key: string, value: unknown): Promise<void>;
   delete(key: string): Promise<boolean>;
+  save(): Promise<void>;
 };
 
 async function createTauriStorage(): Promise<KeyValueStorage> {
@@ -67,16 +71,21 @@ async function createTauriStorage(): Promise<KeyValueStorage> {
     if (typeof value === "string") cache.set(key, value);
   }
   const report = (error: unknown) => console.error("[storage]", error);
+  let pending:Promise<unknown>=Promise.resolve();
+  let writeError:unknown=null;
+  const enqueue=(operation:()=>Promise<unknown>) => {pending=pending.then(operation).catch(error => {writeError=error;report(error);});};
   return {
     getItem: (key) => cache.get(key) ?? null,
     setItem: (key, value) => {
       cache.set(key, String(value));
-      store.set(key, String(value)).catch(report);
+      enqueue(() => store.set(key, String(value)));
     },
     removeItem: (key) => {
       cache.delete(key);
-      store.delete(key).catch(report);
+      enqueue(() => store.delete(key));
     },
+    entries: () => Array.from(cache.entries()),
+    flush: async () => {await pending; const error=writeError;writeError=null;if(error) throw error;await store.save();},
   };
 }
 

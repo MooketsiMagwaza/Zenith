@@ -1,3 +1,5 @@
+import { DEFAULT_PET } from './pet';
+import type { AgentState } from './types';
 export const DECK_COLORS = ['#c9a84c','#7a8a7a','#b0a999','#9a8a6a','#6a8a9a','#8a7a9a','#9a7a6a','#7a9a8a']
 export const STORAGE_KEY = 'zenith_agent_state'
 export const QUOTE_PACKS: Record<string, string[]> = {
@@ -11,12 +13,13 @@ export const WALLPAPERS = {
   gradient: ['linear-gradient(135deg,#1a1a2e,#16213e)','linear-gradient(135deg,#0f0c29,#302b63,#24243e)','linear-gradient(135deg,#2c3e50,#4ca1af)'],
   curated: ['url(https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1920)','url(https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=1920)']
 }
-export const DEFAULT_STATE: any = {
+export const DEFAULT_STATE: AgentState = {
   version:0, 
   decks:[
-    {id:'deck-academic',name:'Academics',color:'#c9a84c',createdAt:0},
-    {id:'deck-projects',name:'Projects',color:'#7a8a7a',createdAt:0}
+    {id:'deck-academic',name:'Sample: Academics',color:'#c9a84c',createdAt:0},
+    {id:'deck-projects',name:'Sample: Projects',color:'#7a8a7a',createdAt:0}
   ],
   tasks:[], logs:[], journals:[], active:null, reminders:[],
+  pet:DEFAULT_PET,
   tutorialSeen:false, zenPack:'musashi', zenInterval:0, zenWallpaper:WALLPAPERS.curated[0]
 }

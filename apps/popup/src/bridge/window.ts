@@ -57,3 +57,8 @@ export async function hideWindow(): Promise<void> {
   const { getCurrentWindow } = await import("@tauri-apps/api/window");
   await getCurrentWindow().hide();
 }
+export async function startDragging(): Promise<void> {
+  if(!isTauri()) return;
+  const {getCurrentWindow}=await import('@tauri-apps/api/window');
+  await getCurrentWindow().startDragging();
+}

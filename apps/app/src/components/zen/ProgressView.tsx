@@ -6,12 +6,12 @@ import { formatDuration } from "@/lib/zen/utils";
 import type { Goal } from "@/lib/zen/features";
 
 export type FeatureStore = ReturnType<typeof useFeatures>;
-export function GoalBar({ z, features, target }: { z: ReturnType<typeof useTogglZen>; features: FeatureStore; target: string }) {
+export function GoalBar({ z, features, target, now }: { z: ReturnType<typeof useTogglZen>; features: FeatureStore; target: string; now?: number }) {
   const goal = features.value.goals[target];
   if (!features.value.progress || !goal) return null;
   const info = targetInfo(z.decks, target);
-  const p = goalProgress(goal, info.taskIds, z.logs, info.lifetime);
-  return <div className="goal-bar"><label>{formatDuration(p.seconds)} / {formatDuration(p.target)} · {goal.period === "day" ? "today" : goal.period === "week" ? "this week" : "total"}
+  const p = goalProgress(goal, info.taskIds, z.logs, info.lifetime, now);
+  return <div className="goal-bar"><label>{formatDuration(p.seconds)} / {formatDuration(p.target)} · {goal.period === "day" ? now ? "selected day" : "today" : goal.period === "week" ? now ? "selected week" : "this week" : "total"}
     <progress aria-label={`${info.title} goal progress`} max={1} value={p.ratio} /></label></div>;
 }
 export function ProgressView({ z, features }: { z: ReturnType<typeof useTogglZen>; features: FeatureStore }) {
