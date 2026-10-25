@@ -30,7 +30,7 @@ impl UpdateStore {
     fn initialize(connection: Connection) -> Result<Self> {
         connection.busy_timeout(Duration::from_secs(5))?;
         let version: i64 = connection.query_row("PRAGMA user_version", [], |r| r.get(0))?;
-        if version > 1 {
+        if version > 2 {
             return Err(Error::Invalid("newer store schema"));
         }
         connection.execute_batch(
@@ -43,7 +43,14 @@ impl UpdateStore {
             CREATE TABLE IF NOT EXISTS peers (
                 id BLOB PRIMARY KEY CHECK(length(id)=32), certificate BLOB NOT NULL,
                 cursor INTEGER NOT NULL DEFAULT 0 CHECK(cursor>=0));
-            PRAGMA user_version=1; COMMIT;",
+            CREATE TABLE IF NOT EXISTS discovery_keys (
+                id BLOB PRIMARY KEY REFERENCES peers(id) ON DELETE CASCADE,
+                secret BLOB NOT NULL CHECK(length(secret)=32));
+            CREATE TABLE IF NOT EXISTS pairing_gate (
+                singleton INTEGER PRIMARY KEY CHECK(singleton=1),
+                attempts INTEGER NOT NULL, locked_until INTEGER NOT NULL);
+            INSERT OR IGNORE INTO pairing_gate VALUES(1,0,0);
+            PRAGMA user_version=2; COMMIT;",
         )?;
         Ok(Self { connection })
     }
@@ -159,7 +166,76 @@ impl UpdateStore {
     }
     pub fn revoke(&mut self, id: DeviceId) -> Result<()> {
         self.connection
+            .execute("DELETE FROM discovery_keys WHERE id=?1", [id.0.as_slice()])?;
+        self.connection
             .execute("DELETE FROM peers WHERE id=?1", [id.0.as_slice()])?;
+        Ok(())
+    }
+    pub(crate) fn pin_paired(&mut self, certificate: &[u8], secret: &[u8; 32]) -> Result<DeviceId> {
+        let id = certificate_id(certificate)?;
+        if self.peer(id)?.is_some() {
+            return Err(Error::Invalid("already paired; revoke before re-pairing"));
+        }
+        let transaction = self.connection.transaction()?;
+        transaction.execute(
+            "INSERT INTO peers(id,certificate) VALUES(?1,?2)",
+            params![id.0.as_slice(), certificate],
+        )?;
+        transaction.execute(
+            "INSERT INTO discovery_keys(id,secret) VALUES(?1,?2)",
+            params![id.0.as_slice(), secret.as_slice()],
+        )?;
+        transaction.commit()?;
+        Ok(id)
+    }
+    pub(crate) fn discovery_keys(&self) -> Result<Vec<(DeviceId, [u8; 32])>> {
+        let mut query = self
+            .connection
+            .prepare("SELECT id,secret FROM discovery_keys ORDER BY id")?;
+        let rows = query.query_map([], |r| {
+            let id: Vec<u8> = r.get(0)?;
+            let secret: Vec<u8> = r.get(1)?;
+            Ok((
+                DeviceId(id.try_into().map_err(|_| rusqlite::Error::InvalidQuery)?),
+                secret
+                    .try_into()
+                    .map_err(|_| rusqlite::Error::InvalidQuery)?,
+            ))
+        })?;
+        Ok(rows.collect::<std::result::Result<Vec<_>, _>>()?)
+    }
+    pub(crate) fn check_pairing(&self, now: u64) -> Result<()> {
+        let until: u64 = self.connection.query_row(
+            "SELECT locked_until FROM pairing_gate WHERE singleton=1",
+            [],
+            |r| unsigned(r, 0),
+        )?;
+        if now < until {
+            return Err(Error::PairingLocked);
+        }
+        Ok(())
+    }
+    // Charge before doing network/crypto work; interruption also consumes a guess.
+    pub(crate) fn reserve_pairing(&mut self, now: u64) -> Result<()> {
+        self.check_pairing(now)?;
+        let until: i64 = now
+            .checked_add(300)
+            .and_then(|n| n.try_into().ok())
+            .ok_or(Error::Invalid("pairing clock"))?;
+        let transaction = self.connection.transaction()?;
+        transaction.execute("UPDATE pairing_gate SET attempts=CASE WHEN locked_until>0 THEN 1 ELSE attempts+1 END, locked_until=0 WHERE singleton=1", [])?;
+        transaction.execute(
+            "UPDATE pairing_gate SET locked_until=?1 WHERE singleton=1 AND attempts>=5",
+            [until],
+        )?;
+        transaction.commit()?;
+        Ok(())
+    }
+    pub(crate) fn pairing_succeeded(&mut self) -> Result<()> {
+        self.connection.execute(
+            "UPDATE pairing_gate SET attempts=0,locked_until=0 WHERE singleton=1",
+            [],
+        )?;
         Ok(())
     }
 }
