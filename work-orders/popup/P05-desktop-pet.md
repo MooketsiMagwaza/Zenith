@@ -2,6 +2,8 @@
 
 State: Implemented in code on 9 October 2026 for the existing popup workspace; native/manual checks open.
 
+Checked by the assistant on 25 October 2026, outside the Codex sandbox: the app tests pass (37 tests across W06 to W11), the pop-up tests pass (7), and the app, pop-up and marketing production builds pass. Not verified: the feature in a browser, on a phone, or in the desktop window (focus rings, contrast, reduced motion, notifications and sounds).
+
 ## Delivered
 
 Opt-in original inline SVG sprout art with CSS idle, focus, break, celebration and reminder-nudge reactions. Separate message, celebration and nudge switches, editable phrases/card kinds, and OS `prefers-reduced-motion` plus a manual still-companion option. Home contains settings and a preview; Show pet on desktop uses the existing minimize shell. The drag handle uses the already-permitted Tauri window dragging API. Clicking the pet restores Home in the popup workspace and shows its full message. No Rust changes, external art or new network calls.

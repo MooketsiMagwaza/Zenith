@@ -2,6 +2,8 @@
 
 State: Implemented in code on 9 October 2026; manual/vendor checks open.
 
+Checked by the assistant on 25 October 2026, outside the Codex sandbox: the app tests pass (37 tests across W06 to W11), the pop-up tests pass (7), and the app, pop-up and marketing production builds pass. Not verified: the feature in a browser, on a phone, or in the desktop window (focus rings, contrast, reduced motion, notifications and sounds).
+
 ## Delivered
 
 `docs/DATA_FORMAT.md` documents a versioned full JSON envelope that preserves original storage strings, entity fields, optional-feature data and Zen preferences. Data view explains ownership and supports export/import for JSON, versioned CSV time entries, Markdown journal bundles and supported timed iCalendar events. Toggl/Clockify detailed CSV imports use labelled invented fixtures and explicit date-order selection. Imports validate and preview before application, start a backup download, merge non-JSON data without removing time/notes, deduplicate imports, reject conflicting IDs and invalidate stale previews. Full JSON is an explicit replacement. Old keys remain unchanged; legacy snapshot and active-session migrations are supported. Additive v1 feature migration preserves extension properties.

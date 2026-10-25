@@ -2,6 +2,8 @@
 
 State: Implemented in code on 9 October 2026; manual checks open.
 
+Checked by the assistant on 25 October 2026, outside the Codex sandbox: the app tests pass (37 tests across W06 to W11), the pop-up tests pass (7), and the app, pop-up and marketing production builds pass. Not verified: the feature in a browser, on a phone, or in the desktop window (focus rings, contrast, reduced motion, notifications and sounds).
+
 ## Delivered
 
 Monday-based month and week views, date navigation, day details, sessions split across local midnight, enabled repeating/one-off reminders, goal progress for the selected date, and click-through to a card/deck. Phone widths use a readable two-column date list. Deleted cards keep history and show a disabled link. Click-through focuses the card and respects reduced motion.

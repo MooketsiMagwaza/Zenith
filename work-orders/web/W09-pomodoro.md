@@ -2,6 +2,8 @@
 
 State: Implemented in code on 9 October 2026; integration/manual checks open.
 
+Checked by the assistant on 25 October 2026, outside the Codex sandbox: the app tests pass (37 tests across W06 to W11), the pop-up tests pass (7), and the app, pop-up and marketing production builds pass. Not verified: the feature in a browser, on a phone, or in the desktop window (focus rings, contrast, reduced motion, notifications and sounds).
+
 ## Delivered
 
 Opt-in 25/5 and 50/10 presets, custom focus/break/long-break lengths, a long break after four focus blocks, manual phases and optional auto-start. Ctrl/Command + Alt + P opens Pomodoro and starts a waiting phase outside text inputs. Focus uses the existing logger, ending at its deadline; breaks never accrue card time. Companion phrases and completion screens are reused. A separately versioned `zenith.pomodoro.v1` runtime survives normal reload; settings extend `zenith.features.v1` additively.

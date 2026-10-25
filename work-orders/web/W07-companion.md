@@ -2,6 +2,8 @@
 
 State: Implemented in code on 9 October 2026; manual checks open.
 
+Checked by the assistant on 25 October 2026, outside the Codex sandbox: the app tests pass (37 tests across W06 to W11), the pop-up tests pass (7), and the app, pop-up and marketing production builds pass. Not verified: the feature in a browser, on a phone, or in the desktop window (focus rings, contrast, reduced motion, notifications and sounds).
+
 ## Delivered
 
 Opt-in companion settings in the additive `zenith.features.v1` record. Seven card kinds, editable kind phrases and per-card overrides, previews using the current title. Existing reminder delivery displays companion wording in-app and uses the native Tauri notification plugin on desktop. Reminder notification/sound switches remain independent. No network calls or existing storage-key changes. Future/unreadable settings remain preserved and editing is disabled. Reminder callbacks now run outside React state updaters.

@@ -2,6 +2,8 @@
 
 State: Implemented in code on 9 October 2026; manual checks open.
 
+Checked by the assistant on 25 October 2026, outside the Codex sandbox: the app tests pass (37 tests across W06 to W11), the pop-up tests pass (7), and the app, pop-up and marketing production builds pass. Not verified: the feature in a browser, on a phone, or in the desktop window (focus rings, contrast, reduced motion, notifications and sounds).
+
 ## Delivered
 
 Independent off-by-default recap, affirmation and milestone switches in the versioned feature record. A native modal dialog after a committed session, including card duration(s), an editable pack and gentle first-hour / goal-crossing messages. Empty sessions produce no screen. Goal acknowledgements are deduplicated by target, goal value and local period; first hours by card. No streak, loss or penalty messages. Existing app README and marketing home copy now describe optional rewards and quiet defaults.
