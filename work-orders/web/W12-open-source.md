@@ -1,6 +1,6 @@
 # W12 — Present Zenith as open source
 
-State: Done for the licence and the copy on 9 October 2026; the open-data promise waits for W11
+State: Done for the licence and copy on 9 October 2026; W11 formats now implemented, with manual validation open
 
 ## Goal
 
@@ -18,7 +18,7 @@ The owner chose the **MIT licence** on 9 October 2026, out of MIT, Apache-2.0, A
 
 ## Still to do
 
-- Say "easy access to your data in open formats" only once W11 (export and import in documented formats) exists. Until then the README says it is planned and not built.
+- W11 now implements documented local JSON, CSV, Markdown and iCalendar export/import, including supported detailed Toggl/Clockify CSV. README and marketing copy now say so and state limits. Real build/browser/desktop/vendor validation remains open in W11.
 - Add a short `CONTRIBUTING.md` and a code of conduct if the owner wants outside contributions.
 - Bundled third-party material keeps its own licence: DM Sans is under the SIL Open Font License, and npm and crate dependencies carry theirs. Run a licence check (for example `cargo deny` and a JavaScript licence report) before the first tagged release and record the result here.
 - Update the portfolio and the profile README, which describe Zenith as all rights reserved if they say anything about the licence.

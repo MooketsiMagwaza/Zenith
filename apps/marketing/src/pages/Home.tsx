@@ -76,7 +76,7 @@ export function Home() {
           <p>
             Students working through a syllabus, writers with a draft, musicians with a practice list,
             programmers learning something hard. Anyone who wants to see where their hours really went, and
-            to think about them afterwards. There are no streaks, no points and no nagging. There is a card, a
+            to think about them afterwards. There are optional progress and rewards, no points and no nagging. There is a card, a
             timer and a blank page.
           </p>
         }

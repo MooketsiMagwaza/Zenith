@@ -31,6 +31,10 @@ const stages: Stage[] = [
     label: "In progress",
     items: [
       {
+        title: "Optional features and open data",
+        body: "Companion messages, calm rewards, Pomodoro, calendar and versioned local export/import are built. Their unit tests and production builds pass; they still have to be tried in a browser, on a phone and in the desktop window.",
+      },
+      {
         title: "The desktop app",
         body: "The full app in its own window on Windows, macOS and Linux, built with Tauri. It compiles; it still has to be run and tested on real machines.",
       },
@@ -101,8 +105,7 @@ export function Roadmap() {
     <>
       <PageHeader eyebrow="Roadmap" title="What is built, and what comes next.">
         <p>
-          Nothing below the first section exists yet, and none of it has a date. Each piece moves up when it works and
-          has been tested, not before.
+          The sections distinguish working interfaces, implemented code awaiting checks, and plans. Each piece moves up when it has been tested on the relevant devices.
         </p>
       </PageHeader>
 
@@ -124,7 +127,7 @@ export function Roadmap() {
       ))}
 
       <Container className="pb-16">
-        <p className="text-sm text-muted">Last updated on 8 October 2026.</p>
+        <p className="text-sm text-muted">Last updated on 9 October 2026.</p>
       </Container>
     </>
   );
