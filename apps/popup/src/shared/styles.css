@@ -23,6 +23,34 @@
 @keyframes pulse-gold { 0%, 100% { opacity: 1; box-shadow: 0 0 8px #c9a84c; } 50% { opacity: 0.5; box-shadow: 0 0 2px #c9a84c; } }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes quoteFade { from { opacity: 0; transform: translateY(10px); filter: blur(6px); letter-spacing: 0.01em; } to { opacity: 1; transform: translateY(0); filter: blur(0); letter-spacing: 0; } }
+.pet-settings { margin-top: 24px; font-size: 13px; color: #ece9e3; padding-bottom: 20px; }
+.pet-settings h2 { font-size: 18px; margin-bottom: 12px; }
+.pet-settings p { margin: 10px 0; color: #b8b5af; }
+.pet-settings label { display: block; margin: 10px 0; }
+.pet-settings input:not([type=checkbox]), .pet-settings select { display: block; background: #151515; color: #ece9e3; border: 1px solid #666; border-radius: 6px; width: 100%; padding: 8px; margin-top: 5px; }
+.pet-settings button { border: 1px solid #8a763f; border-radius: 6px; padding: 7px 10px; margin: 3px; color: #e3c977; }
+.pet-settings :focus-visible, .pet-shell button:focus-visible { outline: 2px solid #e3c977; outline-offset: 2px; }
+.pet-shell { position: relative; width: 100%; border-radius: 12px; background: #0d0d0d; color: #ece9e3; padding: 8px; }
+.pet-shell .pet-open { display: flex; align-items: center; gap: 12px; width: 100%; border: 0; padding: 0; margin: 0; text-align: left; color: #ece9e3; }
+.pet-art { width: 80px; height: 80px; flex-shrink: 0; overflow: visible; }
+.pet-drag { position: absolute; right: 2px; top: 0; z-index: 2; padding: 2px 5px !important; font-size: 10px; cursor: grab; color: #e3c977; border: 0 !important; }
+.pet-speech { font-size: 12px; overflow-wrap: anywhere; }
+.pet-compact { width: calc(100% - 24px); height: calc(100% - 24px); margin: 12px; padding: 4px; border: 1px solid #8a763f; box-shadow: 0 4px 12px #0008; }
+.pet-compact .pet-open { height: 100%; flex-direction: column; gap: 0; text-align: center; justify-content: center; }
+.pet-compact .pet-art { width: 56px; height: 56px; }
+.pet-compact .pet-speech { font-size: 11px; line-height: 13px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-height: 26px; padding: 0 3px; }
+.pet-body { transform-origin: 48px 75px; animation: pet-breathe 4s ease-in-out infinite; }
+.pet-focusing .pet-body { animation: pet-focus 5s ease-in-out infinite; }
+.pet-break .pet-body { animation: pet-rest 5s ease-in-out infinite; }
+.pet-celebrating .pet-body { animation: pet-celebrate 1.2s ease-in-out 3; }
+.pet-nudging .pet-body { animation: pet-nudge 2s ease-in-out 2; }
+@keyframes pet-breathe { 50% { transform: scale(1.02,.98); } }
+@keyframes pet-focus { 50% { transform: rotate(-2deg); } }
+@keyframes pet-rest { 50% { transform: translateY(2px); } }
+@keyframes pet-celebrate { 50% { transform: translateY(-3px) rotate(3deg); } }
+@keyframes pet-nudge { 50% { transform: rotate(-4deg); } }
+.pet-static *, .pet-static { animation: none !important; transition: none !important; }
+@media (prefers-reduced-motion: reduce) { .pet-shell *, .pulse-gold, .fade-in, .app-shell.minimized { animation: none !important; transition: none !important; } }
 
 /* Minimized Ball State */
 .app-shell.minimized {

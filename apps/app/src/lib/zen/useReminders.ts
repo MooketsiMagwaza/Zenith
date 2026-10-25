@@ -1,13 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { storage } from "@/lib/platform";
-import { generateId } from "./utils";
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { storage, isTauri } from '@/lib/platform';
+import { generateId } from './utils';
+import { isReminderDue, nextReminderAt } from './reminderSchedule';
 
-export type ReminderRepeat = "none" | "daily" | "weekdays" | "weekly";
+export type ReminderRepeat = 'none' | 'daily' | 'weekdays' | 'weekly';
 
 export type Reminder = {
   id: string;
   // Target: either a task ("card") or a deck
-  targetType: "task" | "deck";
+  targetType: 'task' | 'deck';
   targetId: string;
   // Cached labels for display in the list / notification
   label: string;
@@ -25,10 +26,10 @@ export type Reminder = {
   lastFiredAt?: number;
 };
 
-const KEY = "toggl_zen_reminders";
+const KEY = 'toggl_zen_reminders';
 
 function loadLS<T>(k: string, fb: T): T {
-  if (typeof window === "undefined") return fb;
+  if (typeof window === 'undefined') return fb;
   try {
     const raw = storage.getItem(k);
     if (!raw) return fb;
@@ -39,7 +40,7 @@ function loadLS<T>(k: string, fb: T): T {
 }
 
 function saveLS(k: string, v: unknown) {
-  if (typeof window === "undefined") return;
+  if (typeof window === 'undefined') return;
   try {
     storage.setItem(k, JSON.stringify(v));
   } catch {
@@ -48,45 +49,20 @@ function saveLS(k: string, v: unknown) {
 }
 
 /** Compute the next time (epoch ms) a reminder should fire, or null if past one-off. */
-export function nextFireAt(r: Reminder, from: number = Date.now()): number | null {
-  if (r.repeat === "none") {
-    return r.fireAt > from ? r.fireAt : null;
-  }
-  const base = new Date(r.fireAt);
-  const hours = base.getHours();
-  const minutes = base.getMinutes();
-  const candidate = new Date(from);
-  candidate.setSeconds(0, 0);
-  candidate.setHours(hours, minutes, 0, 0);
-  if (candidate.getTime() <= from) candidate.setDate(candidate.getDate() + 1);
-
-  if (r.repeat === "daily") return candidate.getTime();
-  if (r.repeat === "weekdays") {
-    while (candidate.getDay() === 0 || candidate.getDay() === 6) {
-      candidate.setDate(candidate.getDate() + 1);
-    }
-    return candidate.getTime();
-  }
-  if (r.repeat === "weekly") {
-    const target = r.weekday ?? base.getDay();
-    while (candidate.getDay() !== target) {
-      candidate.setDate(candidate.getDate() + 1);
-    }
-    return candidate.getTime();
-  }
-  return null;
-}
+export const nextFireAt = nextReminderAt;
 
 /* tiny built-in chime (no asset) */
 function chime() {
-  if (typeof window === "undefined") return;
+  if (typeof window === 'undefined') return;
   try {
-    const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const AC =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     const ctx = new AC();
     const playTone = (freq: number, start: number, dur: number) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      osc.type = "sine";
+      osc.type = 'sine';
       osc.frequency.value = freq;
       gain.gain.value = 0.0001;
       gain.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + start + 0.02);
@@ -105,9 +81,13 @@ function chime() {
 
 export type FireHandler = (r: Reminder) => void;
 
-export function useReminders(onFire?: FireHandler) {
+export function useReminders(onFire?: FireHandler, paused = false) {
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
   const [hydrated, setHydrated] = useState(false);
   const [reminders, setReminders] = useState<Reminder[]>([]);
+  const remindersRef = useRef(reminders);
+  remindersRef.current = reminders;
   const fireRef = useRef<FireHandler | undefined>(onFire);
   useEffect(() => {
     fireRef.current = onFire;
@@ -119,8 +99,8 @@ export function useReminders(onFire?: FireHandler) {
   }, []);
 
   useEffect(() => {
-    if (hydrated) saveLS(KEY, reminders);
-  }, [reminders, hydrated]);
+    if (hydrated && !paused) saveLS(KEY, reminders);
+  }, [reminders, hydrated, paused]);
 
   // Poll every 15s for due reminders
   useEffect(() => {
@@ -128,46 +108,29 @@ export function useReminders(onFire?: FireHandler) {
     let cancelled = false;
 
     const check = () => {
-      if (cancelled) return;
+      if (cancelled || pausedRef.current) return;
       const now = Date.now();
-      setReminders((prev) => {
-        let changed = false;
-        const next = prev.map((r) => {
-          if (!r.enabled) return r;
-          const last = r.lastFiredAt ?? 0;
-          // For repeat reminders, compute the most recent scheduled trigger <= now
-          let due = false;
-          if (r.repeat === "none") {
-            if (r.fireAt <= now && last < r.fireAt) due = true;
-          } else {
-            // find today's trigger
-            const base = new Date(r.fireAt);
-            const todayTrigger = new Date(now);
-            todayTrigger.setHours(base.getHours(), base.getMinutes(), 0, 0);
-            const t = todayTrigger.getTime();
-            const dayOk =
-              r.repeat === "daily" ||
-              (r.repeat === "weekdays" && todayTrigger.getDay() >= 1 && todayTrigger.getDay() <= 5) ||
-              (r.repeat === "weekly" && todayTrigger.getDay() === (r.weekday ?? base.getDay()));
-            if (dayOk && t <= now && now - t < 90 * 1000 && last < t) due = true;
-          }
-          if (due) {
-            changed = true;
-            try {
-              fireRef.current?.(r);
-            } catch {
-              /* ignore */
-            }
-            return {
-              ...r,
-              lastFiredAt: now,
-              enabled: r.repeat === "none" ? false : r.enabled,
-            };
-          }
-          return r;
-        });
-        return changed ? next : prev;
+      const dueReminders: Reminder[] = [];
+      const prev = remindersRef.current;
+      let changed = false;
+      const next = prev.map((r) => {
+        const due = isReminderDue(r, now);
+        if (due) {
+          changed = true;
+          dueReminders.push(r);
+          return {
+            ...r,
+            lastFiredAt: now,
+            enabled: r.repeat === 'none' ? false : r.enabled,
+          };
+        }
+        return r;
       });
+      if (changed) {
+        remindersRef.current = next;
+        setReminders(next);
+      }
+      for (const r of dueReminders) fireRef.current?.(r);
     };
 
     check();
@@ -178,7 +141,7 @@ export function useReminders(onFire?: FireHandler) {
     };
   }, [hydrated]);
 
-  const addReminder = useCallback((r: Omit<Reminder, "id" | "createdAt">) => {
+  const addReminder = useCallback((r: Omit<Reminder, 'id' | 'createdAt'>) => {
     const id = generateId();
     setReminders((p) => [{ ...r, id, createdAt: Date.now() }, ...p]);
     return id;
@@ -200,7 +163,7 @@ export function useReminders(onFire?: FireHandler) {
   const pruneOrphans = useCallback((validTaskIds: Set<string>, validDeckIds: Set<string>) => {
     setReminders((p) =>
       p.filter((r) =>
-        r.targetType === "task" ? validTaskIds.has(r.targetId) : validDeckIds.has(r.targetId),
+        r.targetType === 'task' ? validTaskIds.has(r.targetId) : validDeckIds.has(r.targetId),
       ),
     );
   }, []);
@@ -217,28 +180,47 @@ export function useReminders(onFire?: FireHandler) {
 }
 
 export async function requestNotificationPermission(): Promise<NotificationPermission> {
-  if (typeof window === "undefined" || !("Notification" in window)) return "denied";
-  if (Notification.permission === "granted" || Notification.permission === "denied") {
+  if (isTauri()) {
+    try {
+      const { isPermissionGranted, requestPermission } =
+        await import('@tauri-apps/plugin-notification');
+      return (await isPermissionGranted()) ? 'granted' : await requestPermission();
+    } catch {
+      return 'denied';
+    }
+  }
+  if (typeof window === 'undefined' || !('Notification' in window)) return 'denied';
+  if (Notification.permission === 'granted' || Notification.permission === 'denied') {
     return Notification.permission;
   }
   try {
     return await Notification.requestPermission();
   } catch {
-    return "denied";
+    return 'denied';
   }
 }
 
-export function fireBrowserNotification(r: Reminder, onClick?: () => void) {
-  if (typeof window === "undefined" || !("Notification" in window)) return;
-  if (Notification.permission !== "granted") return;
+export function fireBrowserNotification(r: Reminder, onClick?: () => void, message?: string) {
+  if (isTauri()) {
+    void import('@tauri-apps/plugin-notification')
+      .then(async ({ isPermissionGranted, sendNotification }) => {
+        if (await isPermissionGranted())
+          sendNotification({ title: 'Zenith reminder', body: message ?? r.label });
+      })
+      .catch(() => {});
+    return;
+  }
+  if (typeof window === 'undefined' || !('Notification' in window)) return;
+  if (Notification.permission !== 'granted') return;
   try {
     const body =
-      r.targetType === "deck"
+      message ??
+      (r.targetType === 'deck'
         ? `Time for deck: ${r.label}`
         : r.deckName
           ? `${r.deckName} — ${r.label}`
-          : r.label;
-    const n = new Notification("Zenith reminder", {
+          : r.label);
+    const n = new Notification('Zenith reminder', {
       body,
       tag: r.id,
       silent: !r.sound,

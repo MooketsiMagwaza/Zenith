@@ -1,13 +1,19 @@
 # P05 The desktop pet
 
-State: **Not started**
+State: Implemented in code on 9 October 2026 for the existing popup workspace; native/manual checks open.
 
-## Scope
+Checked by the assistant on 25 October 2026, outside the Codex sandbox: the app tests pass (37 tests across W06 to W11), the pop-up tests pass (7), and the app, pop-up and marketing production builds pass. Not verified: the feature in a browser, on a phone, or in the desktop window (focus rings, contrast, reduced motion, notifications and sounds).
 
-Opt-in animated companion in apps/popup, using the existing store and window shell. Original SVG/CSS art. Idle, focus, break, celebration and nudge reactions, companion speech, dragging and click to open the app. Reduced-motion alternative. Keep Rust changes small and only when necessary.
+## Delivered
 
-## Acceptance and evidence
+Opt-in original inline SVG sprout art with CSS idle, focus, break, celebration and reminder-nudge reactions. Separate message, celebration and nudge switches, editable phrases/card kinds, and OS `prefers-reduced-motion` plus a manual still-companion option. Home contains settings and a preview; Show pet on desktop uses the existing minimize shell. The drag handle uses the already-permitted Tauri window dragging API. Clicking the pet restores Home in the popup workspace and shows its full message. No Rust changes, external art or new network calls.
 
-Popup build; store migration test; opt-in/reaction and reduced-motion checks. Native window dragging and app-open behavior require a real desktop run.
+The existing 124-pixel native ball window is reused. Speech has a two-line visual preview, a full accessible label and tooltip, and a full message after opening. Five-minute break stops/logs focus; break time is not logged. Opted-in local open and drag-attempt counters are shown in Home. Future/unreadable pet data stays read-only and is preserved when unrelated data changes. A `pet.version:1` record extends the existing popup state; old entities and keys remain unchanged. Seed deck labels now explicitly say Sample on new installs only. Hidden popup panels are no longer keyboard-focusable. Reminder polling waits for its delivery handler to be registered, retaining the nudge in state even before the UI mounts.
 
-No implementation or validation yet. The batch stopped at W06 because Git metadata is read-only in the execution environment; the owner requires a local commit after each green step. Resume in order after committing the reviewed W06 changes.
+## Evidence
+
+Both apps pass `npx --offline tsc --noEmit -p apps/<app>`. Offline runner passes 41 real Vitest test bodies: additive popup migration (invented legacy fixture), default switches, unreadable/future preservation, phrase construction, all reactions and expiry, real AgentStore break logging, interaction opt-in and one-off reminder deduplication, plus W06-W11 checks. Local source bundles pass for app and popup (installed packages and assets external). Popup now has an explicit Vitest config. Real app Vitest was attempted and failed at startup with `spawn EPERM`; normal Vite and browser driving are unavailable in this sandbox. Handoff notes/snapshots are in `.verification/` because Git/.codex are read-only.
+
+## Open checks / owner choice
+
+Native dragging, click restore, notifications, reduced-motion rendering, contrast, keyboard traversal and real phone/browser layouts have not been exercised. Real Vitest/Vite builds must run outside the sandbox. The pet uses the popup's independent timers/reminders, not the full app's Pomodoro state. The owner's launch-destination question is open: this implementation restores the popup workspace; launching a separate full app or sharing its state needs the existing one-app/two-app decision. Long desktop messages are previewed until opened. Interaction counters count attempts, not confirmed native movements. Popup persistence retains the existing batching/failure behaviour; file-format docs describe the new nested record.

@@ -10,7 +10,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
     "@fontsource/dm-sans": "^5.1.0",
@@ -24,7 +24,8 @@
     "react-dom": "^18.3.1",
     "react-markdown": "^9.0.1",
     "remark-gfm": "^4.0.0",
-    "sonner": "^1.7.0"
+    "sonner": "^1.7.0",
+    "zod": "^3.24.2"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.1.0",

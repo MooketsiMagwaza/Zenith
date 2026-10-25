@@ -1,0 +1,7 @@
+{
+  "version": 4,
+  "decks": [{"id":"sample-d","name":"Invented sample: Reading","color":"#c9a84c","createdAt":1000}],
+  "tasks": [{"id":"sample-t","deckId":"sample-d","name":"The Great Gatsby","tag":"Read","totalSeconds":0,"createdAt":1000}],
+  "logs": [], "journals": [], "active": null, "reminders": [],
+  "tutorialSeen":true,"zenPack":"zen","zenInterval":0,"zenWallpaper":"#050505"
+}

@@ -264,6 +264,17 @@
 .feature-page input:not([type=checkbox]), .feature-page select, .feature-page textarea { display: block; width: 100%; background: #161616; color: #ece9e3; border: 1px solid #666; border-radius: 8px; padding: 10px; margin-top: 5px; }
 .feature-page button, .feature-button { padding: 8px 12px; border: 1px solid #8a763f; border-radius: 8px; color: #e3c977; margin: 4px; }
 .feature-page button:disabled { opacity: .5; }
+.completion-dialog { border: 1px solid #8a763f; border-radius: 16px; background: #0d0d0d; max-width: min(540px, calc(100vw - 32px)); }
+.completion-dialog::backdrop { background: #000b; }
+.import-overlay { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; background: #080808ee; color: #ece9e3; padding: 32px; text-align: center; }
+.calendar-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); margin: 20px 0; }
+.calendar-grid button { margin: 2px; padding: 8px 4px; min-width: 0; color: #ece9e3; }
+.calendar-grid button[aria-pressed=true] { background: #3e3420; border-color: #e3c977; }
+.calendar-grid span, .calendar-grid strong, .calendar-grid small { display: block; }
+.calendar-grid small { font-size: 10px; }
+@media(max-width: 540px) { .calendar-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+.feature-page :focus-visible, .feature-button:focus-visible { outline: 2px solid #e3c977; outline-offset: 3px; }
 .feature-form, .feature-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,220px),1fr)); gap: 16px; margin: 20px 0; align-items: end; }
 .feature-grid article { padding: 16px; border: 1px solid #444; border-radius: 12px; }
 .goal-bar { color: #c8c4bb; font-size: 12px; margin: 10px 0; min-width: 140px; }

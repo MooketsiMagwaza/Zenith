@@ -4,6 +4,14 @@ type Group = { id: string; eyebrow: string; title: string; items: { title: strin
 
 const groups: Group[] = [
   {
+    id: "open-data", eyebrow: "Open source and data", title: "Your data is yours.",
+    items: [
+      { title: "MIT open source", body: "Zenith is open source under the MIT licence." },
+      { title: "Local export and import", body: "Full JSON backups, CSV time entries, Markdown journal bundles and iCalendar. Supported Toggl and Clockify detailed CSV imports run on your device. The source repository documents the versioned formats and their limits." },
+      { title: "Optional encouragement", body: "Goal progress, companion messages, session recaps, affirmations and milestones are optional and off by default. Pomodoro adds focus blocks and breaks; Calendar shows sessions and reminders." },
+    ],
+  },
+  {
     id: "decks",
     eyebrow: "Decks and cards",
     title: "Your work, as decks of cards.",

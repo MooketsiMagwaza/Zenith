@@ -10,6 +10,7 @@ import FocusView from './views/FocusView'
 import ZenView from './views/ZenView'
 import { Toaster, toast } from 'sonner'
 import { LayoutGrid, BookOpen, History, Search, Sparkles, Pause, Home } from 'lucide-react'
+import { DesktopPet } from './components/DesktopPet';
 
 export type View = 'home' | 'decks' | 'history' | 'journal' | 'search' | 'focus' | 'zen'
 
@@ -27,7 +28,7 @@ export default function App() {
 
   useEffect(() => {
     const u1 = window.api?.on('reminder:fire', (r: any) => {
-      toast.info(`Reminder: ${r.label}`, { description: r.deckName, action: { label: 'Open', onClick: () => setView('journal') } })
+      toast.info(r.message ?? `Reminder: ${r.label}`, { description: r.deckName, action: { label: 'Open', onClick: () => setView('journal') } })
       if (r.sound) { 
         try { 
           const ctx = new AudioContext()
@@ -49,7 +50,8 @@ export default function App() {
     const u2 = window.api?.on('view:open', (v: View) => setView(v))
     const u3 = window.api?.on('window:minimized', () => setIsMinimized(true))
     const u4 = window.api?.on('window:restored', () => setIsMinimized(false))
-    return () => { u1?.(); u2?.(); u3?.(); u4?.() }
+    const u5 = window.api?.on<string>('pet:open', message => {setView('home');if(message) toast.info(message)})
+    return () => { u1?.(); u2?.(); u3?.(); u4?.(); u5?.() }
   }, [])
 
   useEffect(() => {
@@ -65,6 +67,7 @@ export default function App() {
 
     // MINIMIZED BALL UI
   if (isMinimized) {
+    if(state.pet.enabled && !state.petReadOnly) return <DesktopPet state={state} compact />;
     return (
       <div 
         className="app-shell minimized flex items-center justify-center" data-tauri-drag-region
@@ -101,11 +104,11 @@ export default function App() {
       </div>
 
       <main className="flex-1 overflow-hidden relative bg-[#050505]">
-        <div className={`absolute inset-0 transition-opacity duration-200 ${view === 'home' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}><HomeView state={state} setView={setView} /></div>
-        <div className={`absolute inset-0 transition-opacity duration-200 ${view === 'decks' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}><DecksView state={state} setView={setView} /></div>
-        <div className={`absolute inset-0 transition-opacity duration-200 ${view === 'journal' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}><JournalView state={state} setView={setView} /></div>
-        <div className={`absolute inset-0 transition-opacity duration-200 ${view === 'history' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}><HistoryView state={state} setView={setView} /></div>
-        <div className={`absolute inset-0 transition-opacity duration-200 ${view === 'search' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}><SearchView state={state} setView={setView} /></div>
+        <div hidden={view !== 'home'} className={`absolute inset-0 transition-opacity duration-200 ${view === 'home' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}><HomeView state={state} setView={setView} /></div>
+        <div hidden={view !== 'decks'} className={`absolute inset-0 transition-opacity duration-200 ${view === 'decks' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}><DecksView state={state} setView={setView} /></div>
+        <div hidden={view !== 'journal'} className={`absolute inset-0 transition-opacity duration-200 ${view === 'journal' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}><JournalView state={state} setView={setView} /></div>
+        <div hidden={view !== 'history'} className={`absolute inset-0 transition-opacity duration-200 ${view === 'history' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}><HistoryView state={state} setView={setView} /></div>
+        <div hidden={view !== 'search'} className={`absolute inset-0 transition-opacity duration-200 ${view === 'search' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}><SearchView state={state} setView={setView} /></div>
       </main>
 
       {view !== 'focus' && view !== 'zen' && (

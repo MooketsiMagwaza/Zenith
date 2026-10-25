@@ -43,4 +43,4 @@ Everything is stored on your device. There is no account, no server, and no anal
 
 Zenith is open source under the [MIT licence](LICENSE). You can use, copy, modify, and distribute it, including in your own products, as long as the copyright notice and licence text stay with it.
 
-Your data is yours: it lives on your device, and the plan is to keep it in open, documented formats you can export and import (see [W11](work-orders/web/W11-open-data.md)). That part is not built yet.
+Your data is yours: the app has local export and import for full JSON backups, CSV time entries, Markdown journal bundles and iCalendar, plus supported Toggl and Clockify detailed CSV imports. The versioned formats and their limits are documented in [docs/DATA_FORMAT.md](docs/DATA_FORMAT.md). Browser and desktop validation is still open; see [W11](work-orders/web/W11-open-data.md).
